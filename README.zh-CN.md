@@ -4,6 +4,8 @@
 
 **Jev Browser** 是 [CodexQA](https://github.com/openqa-cn/codexqa) 里的一个技能。CodexQA 是一组本地 Agent Skill，用来在代码写完之后检查它到底好不好。本仓库是独立项目，同一技能也可以从 CodexQA 目录安装。
 
+<p align="center"><img src="docs/jev-browser-overview.jpg" alt="Jev Browser：把页面变成选择题" width="920"></p>
+
 <p align="center"><a href="https://htmlpreview.github.io/?https://github.com/openqa-cn/codexqa/blob/main/docs/assets/previews/jev-report.html"><img src="docs/jev-report.png" alt="Jev Browser HTML 执行报告" width="720"></a></p>
 
 用 GUI 模型做浏览器自动化时，每一步都要把截图送给视觉模型找控件。识别要付视觉 token，回路要等模型看图，点选落在坐标上。
@@ -107,7 +109,8 @@ examples/app/       本地小页面，给上面的命令和测试用
 references/         步骤格式和示例
 tests/              离线检查，不访问真实网站，也不调用线上模型
 agents/openai.yaml  在 Agents 界面上显示的名称和短说明
-docs/jev-report.png 本 README 顶部的报告截图
+docs/jev-browser-overview.jpg 本 README 顶部的产品介绍图
+docs/jev-report.png 介绍图下面的报告截图
 reports/            每次运行一个目录。已被 git 忽略
 ```
 

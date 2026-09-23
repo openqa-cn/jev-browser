@@ -4,6 +4,8 @@
 
 **Jev Browser** is one skill in [CodexQA](https://github.com/openqa-cn/codexqa): local Agent Skills that check whether code is actually good after it is written. This repository is the standalone project. The same skill is also installed from the CodexQA catalog.
 
+<p align="center"><img src="docs/jev-browser-overview.jpg" alt="Jev Browser: turn the page into a multiple-choice question" width="920"></p>
+
 <p align="center"><a href="https://htmlpreview.github.io/?https://github.com/openqa-cn/codexqa/blob/main/docs/assets/previews/jev-report.html"><img src="docs/jev-report.png" alt="Jev Browser HTML execution report" width="720"></a></p>
 
 GUI-model browser automation sends a screenshot to a vision model on every step. Recognition spends vision tokens, the loop waits for the model to read the image, and the click lands on coordinates.
@@ -107,7 +109,8 @@ examples/app/       Small local HTML pages used by tests and the commands above
 references/         Step schema and examples
 tests/              Offline checks. They do not call a live site or a live model
 agents/openai.yaml  Display name and short description for the Agents surface
-docs/jev-report.png Report screenshot shown at the top of this README
+docs/jev-browser-overview.jpg Product overview shown at the top of this README
+docs/jev-report.png Report screenshot shown under the overview
 reports/            One folder per run. Git ignores it
 ```
 
