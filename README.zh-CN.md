@@ -8,6 +8,8 @@
 
 CodexQA Jev Browser 把找控件从视觉模型换成页面内编好的索引，把通过与否交给页面上看得见的证据。回放、按目标执行、用例生成和站点探索共用这一套索引。浏览器是 Playwright Chromium。本仓库没有和视觉 GUI 模型的对照基准，下面是结构上避开这些成本的做法。
 
+按 TypeSafe 公布的 System One 对比，同一种决策上 Jev 比前沿大模型快 **40–200 倍**（70–500 毫秒，对方是数秒到数百秒）。他们的工作流演示是快 **193.6 倍**、便宜 **444.6 倍**：0.114 秒、0.000081 美元，对比 8.566 秒、0.013880 美元。TypeSafe 把这一组称为实际收益里偏高的一端。Jev 的输入价是 **每百万 token 0.042 美元**，比 Claude Fable 5.1 低 **238 倍**，输出 token 不计费。这些数字只覆盖决策调用，不包括打开页面和写报告。来源：[TypeSafe](https://typesafe.ai/) 与[发布说明](https://typesafe.ai/blog/introducing-system-one-models-and-jev)。
+
 ## 传统自动化的痛点
 
 | 痛点 | 这里的做法 |
