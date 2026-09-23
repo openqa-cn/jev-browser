@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md) · [How it works](HOW_IT_WORKS.md) · [Known limitations](KNOWN_LIMITATIONS.md)
 
-**Jev Browser** is the standalone project at [openqa-cn/jev-browser](https://github.com/openqa-cn/jev-browser). The same skill is also in the [CodexQA](https://github.com/openqa-cn/codexqa) catalog.
+**Jev Browser** is one skill in [CodexQA](https://github.com/openqa-cn/codexqa): local Agent Skills that check whether code is actually good after it is written. This repository is the standalone project. The same skill is also installed from the CodexQA catalog.
 
 <p align="center"><a href="https://htmlpreview.github.io/?https://github.com/openqa-cn/codexqa/blob/main/docs/assets/previews/jev-report.html"><img src="docs/jev-report.png" alt="Jev Browser HTML replay report" width="720"></a></p>
 
@@ -111,15 +111,22 @@ docs/jev-report.png Report screenshot shown at the top of this README
 reports/            One folder per run. Git ignores it
 ```
 
+## Part of CodexQA
+
+Browser replay is the UI step. The rest of the check lives in [CodexQA](https://github.com/openqa-cn/codexqa): requirements, cases, test data, blast radius, defect scans, and a review page you can open. Install the catalog, or only this skill:
+
+```bash
+npx skills add openqa-cn/codexqa
+npx skills add openqa-cn/jev-browser
+# same skill from the catalog:
+npx skills add openqa-cn/codexqa --skill codexqa-jev-browser
+```
+
+Around this skill: [codexqa-requirement-analyzer](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-requirement-analyzer) asks whether a requirement can be tested, [codexqa-testcase-generator](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-testcase-generator) writes the cases, [codexqa-testdata-generator](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-testdata-generator) builds the data, then Jev Browser checks the page.
+
 ## Portable skill
 
 This directory is the skill. `SKILL.md` sits next to the CLI.
-
-```bash
-npx skills add openqa-cn/jev-browser
-# or, from the CodexQA catalog:
-npx skills add openqa-cn/codexqa --skill codexqa-jev-browser
-```
 
 Any agent that can run a shell uses the same CLI. The skill does not call a vendor browser tool.
 

@@ -2,7 +2,7 @@
 
 [English](README.md) · [工作原理](HOW_IT_WORKS.zh-CN.md) · [已知限制](KNOWN_LIMITATIONS.zh-CN.md)
 
-**Jev Browser** 的独立仓库是 [openqa-cn/jev-browser](https://github.com/openqa-cn/jev-browser)。同一技能也在 [CodexQA](https://github.com/openqa-cn/codexqa) 目录里。
+**Jev Browser** 是 [CodexQA](https://github.com/openqa-cn/codexqa) 里的一个技能。CodexQA 是一组本地 Agent Skill，用来在代码写完之后检查它到底好不好。本仓库是独立项目，同一技能也可以从 CodexQA 目录安装。
 
 <p align="center"><a href="https://htmlpreview.github.io/?https://github.com/openqa-cn/codexqa/blob/main/docs/assets/previews/jev-report.html"><img src="docs/jev-report.png" alt="Jev Browser HTML 回放报告" width="720"></a></p>
 
@@ -111,15 +111,22 @@ docs/jev-report.png 本 README 顶部的报告截图
 reports/            每次运行一个目录。已被 git 忽略
 ```
 
+## 属于 CodexQA
+
+浏览器回放只是界面这一步。其余检查在 [CodexQA](https://github.com/openqa-cn/codexqa)：需求、用例、测试数据、影响面、缺陷扫描，以及一份能打开的评审页。可以装整个目录，也可以只装这个技能：
+
+```bash
+npx skills add openqa-cn/codexqa
+npx skills add openqa-cn/jev-browser
+# 从目录里只装这一个：
+npx skills add openqa-cn/codexqa --skill codexqa-jev-browser
+```
+
+前后衔接：[codexqa-requirement-analyzer](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-requirement-analyzer) 看需求能不能测，[codexqa-testcase-generator](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-testcase-generator) 写用例，[codexqa-testdata-generator](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-testdata-generator) 造数据，然后由 Jev Browser 核对页面。
+
 ## 可移植 skill
 
 本目录就是 skill。`SKILL.md` 和 CLI 放在一起。
-
-```bash
-npx skills add openqa-cn/jev-browser
-# 或从 CodexQA 目录安装：
-npx skills add openqa-cn/codexqa --skill codexqa-jev-browser
-```
 
 任何能跑 shell 的 Agent 都使用同一套 CLI。这个 skill 不调用厂商专用的浏览器工具。
 
