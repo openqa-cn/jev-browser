@@ -13,12 +13,11 @@
 | 组件 | 状态 | 说明 |
 | --- | --- | --- |
 | Agent | 实验性 | 任何能跑 shell 的宿主。没有厂商专用浏览器工具。 |
-| 运行时 | 实验性 | Node.js >= 20 和 Playwright Chromium。Cloak 是可选项，没有内置下载地址。 |
+| 运行时 | 实验性 | Node.js >= 20 和 Playwright Chromium。 |
 | 模型 | 可选 | 仅现场 `auto` / `generate --goal` 需要。 |
 
 ## 边界
 
 - 不要把密钥写进用例文件。用 `${PASSWORD}` 这类环境变量。
 - 在退出、删除、支付或其他破坏性控件上做 explore 或 auto 之前先确认。
-- `install-browser` 只在 `CLOAKBROWSER_DOWNLOAD_URL` 与 `CLOAKBROWSER_SHA256` 都设置后下载 Cloak。GeoIP 要用 `CLOAKBROWSER_GEOIP_URL` 和 `CLOAKBROWSER_GEOIP_SHA256` 另行打开。
 - 密码以及名称类似的字段不会发给模型。代理只使用你设置的 `HTTPS_PROXY`，CLI 不会探测本机代理端口。

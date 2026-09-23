@@ -19,7 +19,7 @@ Install once, from this skill directory (the directory that contains `package.js
 npm install
 ```
 
-Playwright Chromium is the default browser. Do not download another browser unless the user has set both `CLOAKBROWSER_DOWNLOAD_URL` (https) and `CLOAKBROWSER_SHA256`. This skill does not ship a mirror. Optional GeoIP is a separate pair, `CLOAKBROWSER_GEOIP_URL` and `CLOAKBROWSER_GEOIP_SHA256`, and only when the user is allowed to fetch that file. Files land in `~/.cloakbrowser`. `browser.engine: auto` uses a local Cloak binary when one is already installed. `UI_PILOT_BROWSER=chromium` forces Playwright Chromium. Do not read another application's browser profile.
+Playwright Chromium is the browser. Do not read another application's browser profile.
 
 ## Commands
 
@@ -34,8 +34,6 @@ npx codexqa-jev-browser explore --url <url> --out generated/explore
 ```
 
 The browser window is shown by default. Set `browser.headless: true` to hide it. `--headed` forces a visible window. `--no-screenshots` skips images.
-
-If Cloak is not installed, stay on Playwright Chromium. Do not invent a download URL or another browser.
 
 ## Model setup
 

@@ -13,12 +13,11 @@
 | Component | Status | Notes |
 | --- | --- | --- |
 | Agent | Experimental | Any host that can run a shell. No vendor browser tools. |
-| Runtime | Experimental | Node.js >= 20 and Playwright Chromium. Cloak is optional and has no built-in download URL. |
+| Runtime | Experimental | Node.js >= 20 and Playwright Chromium. |
 | Model | Optional | Required only for live `auto` / `generate --goal`. |
 
 ## Boundaries
 
 - Do not put secrets in case files. Use environment variables such as `${PASSWORD}`.
 - Confirm before explore or auto on logout, delete, pay, or other destructive controls.
-- `install-browser` downloads Cloak only from `CLOAKBROWSER_DOWNLOAD_URL` after `CLOAKBROWSER_SHA256` matches. GeoIP is opt-in via `CLOAKBROWSER_GEOIP_URL` and `CLOAKBROWSER_GEOIP_SHA256`.
 - Password and similarly named fields are omitted from model requests. Set `HTTPS_PROXY` yourself; the CLI does not probe local proxy ports.

@@ -60,4 +60,4 @@ npx skills add openqa-cn/codexqa --skill codexqa-jev-browser
 npm install
 ```
 
-Playwright Chromium runs without a further download. Optional Cloak needs `CLOAKBROWSER_DOWNLOAD_URL` and `CLOAKBROWSER_SHA256` before `npx codexqa-jev-browser install-browser`.
+Playwright Chromium runs without a further download.
