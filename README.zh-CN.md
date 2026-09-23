@@ -4,6 +4,8 @@
 
 **Jev Browser** 的独立仓库是 [openqa-cn/jev-browser](https://github.com/openqa-cn/jev-browser)。同一技能也在 [CodexQA](https://github.com/openqa-cn/codexqa) 目录里。
 
+<p align="center"><a href="https://htmlpreview.github.io/?https://github.com/openqa-cn/codexqa/blob/main/docs/assets/previews/jev-report.html"><img src="docs/jev-report.png" alt="Jev Browser HTML 回放报告" width="720"></a></p>
+
 用 GUI 模型做浏览器自动化时，每一步都要把截图送给视觉模型找控件。识别要付视觉 token，回路要等模型看图，点选落在坐标上。
 
 CodexQA Jev Browser 把找控件从视觉模型换成页面内编好的索引，把通过与否交给页面上看得见的证据。回放、按目标执行、用例生成和站点探索共用这一套索引。浏览器是 Playwright Chromium。本仓库没有和视觉 GUI 模型的对照基准，下面是结构上避开这些成本的做法。
@@ -94,6 +96,7 @@ examples/app/       本地小页面，给上面的命令和测试用
 references/         步骤格式和示例
 tests/              离线检查，不访问真实网站，也不调用线上模型
 agents/openai.yaml  在 Agents 界面上显示的名称和短说明
+docs/jev-report.png 本 README 顶部的报告截图
 reports/            每次运行一个目录。已被 git 忽略
 ```
 

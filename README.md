@@ -4,6 +4,8 @@
 
 **Jev Browser** is the standalone project at [openqa-cn/jev-browser](https://github.com/openqa-cn/jev-browser). The same skill is also in the [CodexQA](https://github.com/openqa-cn/codexqa) catalog.
 
+<p align="center"><a href="https://htmlpreview.github.io/?https://github.com/openqa-cn/codexqa/blob/main/docs/assets/previews/jev-report.html"><img src="docs/jev-report.png" alt="Jev Browser HTML replay report" width="720"></a></p>
+
 GUI-model browser automation sends a screenshot to a vision model on every step. Recognition spends vision tokens, the loop waits for the model to read the image, and the click lands on coordinates.
 
 CodexQA Jev Browser finds controls from an index built inside the page and treats visible page evidence as the result. Replay, goal runs, case generation, and site exploration share that index. The browser is Playwright Chromium. This repository has no benchmark against vision GUI models. The rows below are the structural answers to those costs.
@@ -94,6 +96,7 @@ examples/app/       Small local HTML pages used by tests and the commands above
 references/         Step schema and examples
 tests/              Offline checks. They do not call a live site or a live model
 agents/openai.yaml  Display name and short description for the Agents surface
+docs/jev-report.png Report screenshot shown at the top of this README
 reports/            One folder per run. Git ignores it
 ```
 
