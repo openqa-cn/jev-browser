@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md) · [How it works](HOW_IT_WORKS.md) · [Known limitations](KNOWN_LIMITATIONS.md)
 
-**Jev Browser** is the standalone project at [openqa-cn/codexqa-jev-browser](https://github.com/openqa-cn/codexqa-jev-browser). The same skill is also in the [CodexQA](https://github.com/openqa-cn/codexqa) catalog.
+**Jev Browser** is the standalone project at [openqa-cn/jev-browser](https://github.com/openqa-cn/jev-browser). The same skill is also in the [CodexQA](https://github.com/openqa-cn/codexqa) catalog.
 
 GUI-model browser automation sends a screenshot to a vision model on every step. Recognition spends vision tokens, the loop waits for the model to read the image, and the click lands on coordinates.
 
@@ -81,7 +81,7 @@ Reports land in `reports/<run-id>/report.html`. `report.json` is the machine-rea
 This directory is the skill. `SKILL.md` sits next to the CLI.
 
 ```bash
-npx skills add openqa-cn/codexqa-jev-browser
+npx skills add openqa-cn/jev-browser
 # or, from the CodexQA catalog:
 npx skills add openqa-cn/codexqa --skill codexqa-jev-browser
 ```

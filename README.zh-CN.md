@@ -2,7 +2,7 @@
 
 [English](README.md) · [工作原理](HOW_IT_WORKS.zh-CN.md) · [已知限制](KNOWN_LIMITATIONS.zh-CN.md)
 
-**Jev Browser** 的独立仓库是 [openqa-cn/codexqa-jev-browser](https://github.com/openqa-cn/codexqa-jev-browser)。同一技能也在 [CodexQA](https://github.com/openqa-cn/codexqa) 目录里。
+**Jev Browser** 的独立仓库是 [openqa-cn/jev-browser](https://github.com/openqa-cn/jev-browser)。同一技能也在 [CodexQA](https://github.com/openqa-cn/codexqa) 目录里。
 
 用 GUI 模型做浏览器自动化时，每一步都要把截图送给视觉模型找控件。识别要付视觉 token，回路要等模型看图，点选落在坐标上。
 
@@ -81,7 +81,7 @@ npx codexqa-jev-browser explore --url examples/app/index.html --out generated/ex
 本目录就是 skill。`SKILL.md` 和 CLI 放在一起。
 
 ```bash
-npx skills add openqa-cn/codexqa-jev-browser
+npx skills add openqa-cn/jev-browser
 # 或从 CodexQA 目录安装：
 npx skills add openqa-cn/codexqa --skill codexqa-jev-browser
 ```
