@@ -37,13 +37,29 @@ The browser window is shown by default. Set `browser.headless: true` to hide it.
 
 ## Model setup
 
-Do this before starting live `auto` / `generate --goal`. The CLI must call Jev (`systemone`) or an OpenAI-compatible `chat/completions` API itself. Do not treat the host Cursor/Codex session model as the decision model.
+Do this before live `auto` / `generate --goal`. The CLI calls Jev or an OpenAI-compatible API itself. The host Cursor/Codex session model is not the decision model. `observe`, `run`, `explore`, and `--decisions` do not need a key. Do not stop those commands to ask for one.
 
-1. Check the environment (and the project `.env`, which the CLI loads automatically) for `TYPESAFE_API_KEY` (Jev) or `OPENAI_API_KEY`. Optional: `TYPESAFE_MODEL`, `OPENAI_BASE_URL`, `OPENAI_MODEL`, `TEXT_MODEL`.
-2. If a decision key is present, run the command. Prefer Jev when `TYPESAFE_API_KEY` exists. Do not ask again.
-3. `generate` writes the YAML after every successful step. Do not hand-author the case step by step while the run is walking the site.
-4. If the key is missing and the user needs a live model: stop and ask once for the API key, and whether they use a non-official gateway. Write the answers into the current shell and/or the project `.env`. Never write the key into case YAML. Never commit `.env`.
-5. If the user is using `--decisions`, or only `observe` / `run` / `explore`, do not ask for a key.
+Keys live in a `.env` file, not in the chat. The CLI loads the `.env` next to this `SKILL.md` first, then a repo-root `.env`, and does not override variables already set in the shell.
+
+1. Read that `.env` (or `.env.example` if `.env` is missing). If `TYPESAFE_API_KEY` or `OPENAI_API_KEY` is already set, run the command. Do not ask again.
+2. If neither key is set, copy `.env.example` to `.env` in the skill directory and tell the user to fill that file. Do not ask them to paste a key into the chat. Show this shape:
+
+```bash
+# Each step: which control, which goal phrase to type, whether the step worked, whether the task is done.
+TYPESAFE_API_KEY=
+TYPESAFE_MODEL=jev-latest
+TYPESAFE_BASE_URL=https://api.typesafe.ai/v1
+
+# Task plan before the browser opens. Also the decision and the done check when TYPESAFE_API_KEY is empty.
+OPENAI_API_KEY=
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_MODEL=gpt-4o-mini
+TEXT_MODEL=gpt-4o-mini
+```
+
+3. Prefer Jev when `TYPESAFE_API_KEY` is set. `OPENAI_MODEL` is only the planner unless Jev is unset. A third-party gateway is `OPENAI_BASE_URL` or `TYPESAFE_BASE_URL`, not a separate product. Set `HTTPS_PROXY` in the same `.env` only when that gateway needs a proxy.
+4. `generate` writes the YAML after every successful step. Do not hand-author the case step by step while the run is walking the site.
+5. Never write a key into case YAML. Never commit `.env`.
 
 Optional CLI overrides (never `--api-key`): `--model`, `--base-url`, `--config`. Model name and gateway may also live in `codexqa-jev-browser.config.yaml` as `${OPENAI_API_KEY}`-style placeholders.
 
