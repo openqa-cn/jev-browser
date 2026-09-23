@@ -6,8 +6,6 @@
 
 <p align="center"><img src="docs/jev-browser-overview.jpg" alt="Jev Browser：把页面变成选择题" width="920"></p>
 
-<p align="center"><a href="https://htmlpreview.github.io/?https://github.com/openqa-cn/codexqa/blob/main/docs/assets/previews/jev-report.html"><img src="docs/jev-report.png" alt="Jev Browser HTML 执行报告" width="720"></a></p>
-
 用 GUI 模型做浏览器自动化时，每一步都要把截图送给视觉模型找控件。识别要付视觉 token，回路要等模型看图，点选落在坐标上。
 
 CodexQA Jev Browser 把找控件从视觉模型换成页面内编好的索引，把通过与否交给页面上看得见的证据。回放、按目标执行、用例生成和站点探索共用这一套索引。浏览器是 Playwright Chromium。本仓库没有和视觉 GUI 模型的对照基准，下面是结构上避开这些成本的做法。
@@ -42,6 +40,12 @@ CodexQA Jev Browser 把找控件从视觉模型换成页面内编好的索引，
 `observe`、`run`、`explore` 和 `--decisions` 停在索引和执行器。现场的 `auto` 和 `generate --goal` 才加上规划器和决策来源。`generate` 把通过的轨迹编译回执行器可以单独回放的用例。
 
 要输入的文字由同一次 Jev 决策从目标里已经写出的短语中选定。点哪一个控件仍由索引上的节点 id 决定。`knowledge/<app>/` 里命中的笔记仍附在这次决策上。
+
+## 执行报告
+
+每次运行写一份 `reports/<run-id>/report.html`：用例、每一步，以及带标记的截图。示例可以点开：
+
+<p align="center"><a href="https://htmlpreview.github.io/?https://github.com/openqa-cn/codexqa/blob/main/docs/assets/previews/jev-report.html"><img src="docs/jev-report.png" alt="Jev Browser HTML 执行报告" width="640"></a></p>
 
 ## 安装
 
@@ -110,7 +114,7 @@ references/         步骤格式和示例
 tests/              离线检查，不访问真实网站，也不调用线上模型
 agents/openai.yaml  在 Agents 界面上显示的名称和短说明
 docs/jev-browser-overview.jpg 本 README 顶部的产品介绍图
-docs/jev-report.png 介绍图下面的报告截图
+docs/jev-report.png 「执行报告」一节里的报告截图
 reports/            每次运行一个目录。已被 git 忽略
 ```
 

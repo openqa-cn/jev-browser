@@ -6,8 +6,6 @@
 
 <p align="center"><img src="docs/jev-browser-overview.jpg" alt="Jev Browser: turn the page into a multiple-choice question" width="920"></p>
 
-<p align="center"><a href="https://htmlpreview.github.io/?https://github.com/openqa-cn/codexqa/blob/main/docs/assets/previews/jev-report.html"><img src="docs/jev-report.png" alt="Jev Browser HTML execution report" width="720"></a></p>
-
 GUI-model browser automation sends a screenshot to a vision model on every step. Recognition spends vision tokens, the loop waits for the model to read the image, and the click lands on coordinates.
 
 CodexQA Jev Browser finds controls from an index built inside the page and treats visible page evidence as the result. Replay, goal runs, case generation, and site exploration share that index. The browser is Playwright Chromium. This repository has no benchmark against vision GUI models. The rows below are the structural answers to those costs.
@@ -42,6 +40,12 @@ A failed live run is usually a missing or wrong note, not a missing selector. Re
 `observe`, `run`, `explore`, and `--decisions` stop at the index and the actor. Live `auto` and `generate --goal` add the planner and a decision provider. `generate` turns a passing trace back into a case the actor can replay alone.
 
 Typing uses characters the same Jev decision chooses from phrases already in the goal. Which control receives them is still the node id on the index. Notes in `knowledge/<app>/` stay on that decision.
+
+## Execution report
+
+Each run writes `reports/<run-id>/report.html`: the case, every step, and the marked screenshot. Open the sample:
+
+<p align="center"><a href="https://htmlpreview.github.io/?https://github.com/openqa-cn/codexqa/blob/main/docs/assets/previews/jev-report.html"><img src="docs/jev-report.png" alt="Jev Browser HTML execution report" width="640"></a></p>
 
 ## Install
 
@@ -110,7 +114,7 @@ references/         Step schema and examples
 tests/              Offline checks. They do not call a live site or a live model
 agents/openai.yaml  Display name and short description for the Agents surface
 docs/jev-browser-overview.jpg Product overview shown at the top of this README
-docs/jev-report.png Report screenshot shown under the overview
+docs/jev-report.png Report screenshot in the Execution report section
 reports/            One folder per run. Git ignores it
 ```
 
