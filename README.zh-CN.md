@@ -76,6 +76,21 @@ npx codexqa-jev-browser explore --url examples/app/index.html --out generated/ex
 
 报告写在 `reports/<run-id>/report.html`。`report.json` 是机器可读副本，`report.md` 是短摘要。用例失败时进程以非零状态退出。
 
+## 目录
+
+```text
+SKILL.md            给 Agent 的入口：什么时候用这个技能、跑哪条命令
+bin/                命令行启动器
+src/                运行时。observe/ 给页面控件编号，report/ 写 HTML 报告
+knowledge/          决策时参考的笔记。general/ 每次都带上，其他目录按站点分开
+cases/              可回放的示例；cases/scripts 是写死的决策，用来不调模型地走通流程
+examples/app/       本地小页面，给上面的命令和测试用
+references/         步骤格式和示例
+tests/              离线检查，不访问真实网站，也不调用线上模型
+agents/openai.yaml  在 Agents 界面上显示的名称和短说明
+reports/            每次运行一个目录。已被 git 忽略
+```
+
 ## 可移植 skill
 
 本目录就是 skill。`SKILL.md` 和 CLI 放在一起。

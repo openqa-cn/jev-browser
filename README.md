@@ -76,6 +76,21 @@ The window is visible by default. `browser.headless: true` hides it. `--headed` 
 
 Reports land in `reports/<run-id>/report.html`. `report.json` is the machine-readable copy. `report.md` is the short summary. A failing case exits non-zero.
 
+## Layout
+
+```text
+SKILL.md            Agent entry: when to use this skill and which command to run
+bin/                CLI launcher
+src/                Runtime. observe/ builds the control index. report/ writes the HTML report
+knowledge/          Notes for the decision. general/ applies to every site; other folders are per app
+cases/              Replay examples, plus scripted decisions under cases/scripts
+examples/app/       Small local HTML pages used by tests and the commands above
+references/         Step schema and examples
+tests/              Offline checks. They do not call a live site or a live model
+agents/openai.yaml  Display name and short description for the Agents surface
+reports/            One folder per run. Git ignores it
+```
+
 ## Portable skill
 
 This directory is the skill. `SKILL.md` sits next to the CLI.
