@@ -122,7 +122,21 @@ npx skills add openqa-cn/jev-browser
 npx skills add openqa-cn/codexqa --skill codexqa-jev-browser
 ```
 
-前后衔接：[codexqa-requirement-analyzer](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-requirement-analyzer) 看需求能不能测，[codexqa-testcase-generator](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-testcase-generator) 写用例，[codexqa-testdata-generator](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-testdata-generator) 造数据，然后由 Jev Browser 核对页面。
+其余能力按一次检查通常的顺序：
+
+| 技能 | 拿到什么 |
+| --- | --- |
+| [codexqa-skill-router](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-skill-router) | 按你的话选对技能，没有就装上再交接。 |
+| [codexqa-requirement-analyzer](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-requirement-analyzer) | 代码还没写时，一份 P0/P1 的需求缺口和冲突登记表。 |
+| [codexqa-testcase-generator](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-testcase-generator) | 本地测试方案和 Web / 服务端 / APP 用例。没写清的标 TBD。 |
+| [codexqa-testdata-generator](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-testdata-generator) | 对着后端造数，把返回的业务 ID 写回用例前置条件。 |
+| [codexqa-code-wiki](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-code-wiki) | 架构图谱：模块、真实依赖、枢纽，以及从哪开始读。 |
+| [codexqa-code-analyzer](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-code-analyzer) | 变更影响面：打到哪些接口、方法和调用链，哪些边还没测试。 |
+| [codexqa-rootcause-analyzer](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-rootcause-analyzer) | 带门禁的 RCA，把抛错位置和根因分开。 |
+| [codexqa-defect-analyzer](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-defect-analyzer) | P0–P3 的 HTML 扫描：缺陷、密钥和危险写法。 |
+| [codexqa-code-reviewer](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-code-reviewer) | 双语 `REVIEW-REPORT.html`，合码前给评审人打开。 |
+
+Jev Browser 是这条闭环里的页面核对：用例和数据有了之后，看界面是不是真走到了说好的证据。
 
 ## 可移植 skill
 

@@ -122,7 +122,21 @@ npx skills add openqa-cn/jev-browser
 npx skills add openqa-cn/codexqa --skill codexqa-jev-browser
 ```
 
-Around this skill: [codexqa-requirement-analyzer](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-requirement-analyzer) asks whether a requirement can be tested, [codexqa-testcase-generator](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-testcase-generator) writes the cases, [codexqa-testdata-generator](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-testdata-generator) builds the data, then Jev Browser checks the page.
+The other skills, in the order a check usually runs:
+
+| Skill | What you get |
+| --- | --- |
+| [codexqa-skill-router](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-skill-router) | Picks the matching skill and installs it if it is missing. |
+| [codexqa-requirement-analyzer](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-requirement-analyzer) | A P0/P1 register of gaps and conflicts in a PRD, before code is written. |
+| [codexqa-testcase-generator](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-testcase-generator) | A local test plan and cases for Web, server, and APP. Unknowns stay TBD. |
+| [codexqa-testdata-generator](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-testdata-generator) | Backend data, with the returned business IDs written into case preconditions. |
+| [codexqa-code-wiki](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-code-wiki) | An architecture graph: modules, real dependencies, the hub, and where to start reading. |
+| [codexqa-code-analyzer](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-code-analyzer) | Blast radius: which APIs, methods, and call chains a change hits, and which edges have no tests. |
+| [codexqa-rootcause-analyzer](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-rootcause-analyzer) | A gated RCA that separates the throw site from the root cause. |
+| [codexqa-defect-analyzer](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-defect-analyzer) | A P0–P3 HTML scan of bugs, secrets, and dangerous patterns. |
+| [codexqa-code-reviewer](https://github.com/openqa-cn/codexqa/tree/main/skills/codexqa-code-reviewer) | A bilingual `REVIEW-REPORT.html` a reviewer can open before merge. |
+
+Jev Browser is the page check in that loop: after the cases and data exist, it shows whether the UI actually reached the evidence.
 
 ## Portable skill
 
