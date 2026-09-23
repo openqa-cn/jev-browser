@@ -10,6 +10,12 @@ CodexQA Jev Browser finds controls from an index built inside the page and treat
 
 On TypeSafe’s published System One comparison, a Jev decision is **40×–200× faster** than a frontier LLM on the same kind of question (70–500 ms, against multi-second LLM calls). Their workflow demo is **193.6× faster** and **444.6× cheaper**: $0.000081 in 0.114 s versus $0.013880 in 8.566 s. TypeSafe calls that pair the high end of real-world gains. Jev lists input at **$0.042 per million tokens**, **238× lower than Claude Fable 5.1**, and does not bill output tokens. These figures are for the decision call, not for loading the page or saving the report. Source: [TypeSafe](https://typesafe.ai/) and the [launch post](https://typesafe.ai/blog/introducing-system-one-models-and-jev).
 
+## What raises the pass rate
+
+The knowledge base is the main lever. Jev only chooses an indexed control, and the characters it can type are phrases already in the goal. It does not know that a Baidu cite is an ad, that the left city box is the departure city, or that a login dialog means stop. Those facts belong in `knowledge/<app>/*.md`.
+
+A failed live run is usually a missing or wrong note, not a missing selector. Read the report, name the control the model should have used or avoided, and add that sentence to the matching note. `hosts` matches the site. `keywords` match the goal. `general: true` is attached on every run, such as the login-dialog stop. Notes are reference. The model still has to pick an index that was observed. Do not put that site's fill rules into `src/policy.ts`.
+
 ## Where traditional automation gets stuck
 
 | Pain | What this runtime does |
