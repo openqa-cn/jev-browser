@@ -1,0 +1,6 @@
+- operation: TYPE
+  target: {role: searchbox, name: 搜索}
+  text: Pilot
+- operation: CLICK
+  target: {role: link, name: Pilot 入门}
+- operation: DONE

@@ -1,0 +1,6 @@
+interface:
+  display_name: CodexQA Jev Browser
+  short_description: Jev browser — replay, generate, and explore UI cases
+  default_prompt: Replay or generate browser UI cases with CodexQA Jev Browser
+policy:
+  allow_implicit_invocation: true

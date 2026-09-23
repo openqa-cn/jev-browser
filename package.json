@@ -1,0 +1,31 @@
+{
+  "name": "codexqa-jev-browser",
+  "version": "0.1.0",
+  "description": "Cross-tool browser UI automation: replay, auto, generate, explore.",
+  "type": "module",
+  "bin": {
+    "codexqa-jev-browser": "./bin/codexqa-jev-browser.mjs"
+  },
+  "scripts": {
+    "codexqa-jev-browser": "tsx src/cli.ts",
+    "start": "tsx src/cli.ts",
+    "build": "tsc && cp src/observe/snapshot.dom.js dist/observe/snapshot.dom.js && cp src/report/template.html dist/report/template.html",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "playwright": "^1.55.0",
+    "undici": "^7.29.1",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

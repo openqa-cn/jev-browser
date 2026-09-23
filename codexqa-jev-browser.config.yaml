@@ -1,0 +1,26 @@
+browser:
+  engine: auto
+  headless: false
+  viewport_width: 1120
+  viewport_height: 780
+model:
+  base_url: ${OPENAI_BASE_URL}
+  api_key: ${OPENAI_API_KEY}
+  model: ${OPENAI_MODEL}
+  text_model: ${TEXT_MODEL}
+  typesafe_api_key: ${TYPESAFE_API_KEY}
+  typesafe_model: ${TYPESAFE_MODEL}
+  typesafe_base_url: ${TYPESAFE_BASE_URL}
+sources:
+  api:
+    map:
+      items: $.data
+      id: $.id
+      name: $.name
+      start: $.start
+      goal: $.goal
+      tags: $.tags
+      steps: $.steps
+      teardown: $.teardown
+reports_dir: reports
+max_steps: 60

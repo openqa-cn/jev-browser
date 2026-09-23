@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.venv/
+.env
+.env.*
+!.env.example
+.DS_Store
+reports/
+generated/
+*.mp4
+.playwright/
+*.tsbuildinfo
+.biz/
+.claude/
+.claude_temp_files/
+.agents/
+mockups/

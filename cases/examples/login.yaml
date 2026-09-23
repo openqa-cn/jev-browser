@@ -1,0 +1,13 @@
+id: login-workbench
+name: 登录进入工作台
+start:
+  url: examples/app/index.html
+goal: 输入用户名并进入工作台
+steps:
+  - op: type
+    target: {role: textbox, name: 用户名}
+    value: demo
+  - op: click
+    target: {role: button, name: 进入工作台}
+  - op: assert
+    visible_text: 工作台已打开

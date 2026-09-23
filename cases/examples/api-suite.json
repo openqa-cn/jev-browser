@@ -1,0 +1,27 @@
+{
+  "data": [
+    {
+      "id": "api-search-docs",
+      "name": "接口下发的搜索用例",
+      "start": {"url": "examples/app/index.html"},
+      "goal": "搜索 Pilot 并打开文档",
+      "tags": ["api"],
+      "steps": [
+        {
+          "op": "type",
+          "target": {"role": "searchbox", "name": "搜索"},
+          "value": "Pilot"
+        },
+        {
+          "op": "click",
+          "target": {"role": "link", "name": "Pilot 入门"}
+        },
+        {
+          "op": "assert",
+          "url_includes": "docs.html",
+          "visible_text": "入门"
+        }
+      ]
+    }
+  ]
+}

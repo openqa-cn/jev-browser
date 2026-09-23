@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>iframe child</title>
+</head>
+<body>
+  <button type="button" id="inner">iframe 确认</button>
+  <script>
+    document.getElementById("inner").addEventListener("click", () => {
+      const flag = parent.document.getElementById("from-frame");
+      if (flag) flag.hidden = false;
+    });
+  </script>
+</body>
+</html>

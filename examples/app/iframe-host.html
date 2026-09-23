@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>iframe host</title>
+</head>
+<body>
+  <h1>iframe host</h1>
+  <p id="from-frame" hidden>iframe 已点击</p>
+  <iframe name="child" id="child" title="child" width="360" height="120"></iframe>
+  <script>
+    const doc = document.getElementById("child").contentDocument;
+    doc.open();
+    doc.write(`<!DOCTYPE html><html><body>
+      <button type="button" id="inner">iframe 确认</button>
+      <script>
+        document.getElementById("inner").addEventListener("click", () => {
+          const flag = parent.document.getElementById("from-frame");
+          if (flag) flag.hidden = false;
+        });
+      <\/script>
+    </body></html>`);
+    doc.close();
+  </script>
+</body>
+</html>

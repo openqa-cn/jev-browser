@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>Demo Library</title>
+  <style>
+    body { font: 16px/1.5 sans-serif; margin: 24px; }
+    nav a { margin-right: 12px; }
+    .card { margin: 16px 0; padding: 12px; border: 1px solid #ccc; }
+    .danger { color: #a00; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Demo Library</h1>
+    <nav aria-label="主导航">
+      <a href="index.html">首页</a>
+      <a href="docs.html">文档</a>
+      <a href="settings.html">设置</a>
+    </nav>
+  </header>
+  <main>
+    <label for="q">搜索</label>
+    <input id="q" type="search" placeholder="搜索" aria-label="搜索">
+    <section id="results" class="card">
+      <h2>馆藏</h2>
+      <a href="docs.html" data-title="pilot">Pilot 入门</a><br>
+      <a href="settings.html" data-title="settings">设置说明</a>
+    </section>
+    <form class="card" aria-label="登录">
+      <label for="user">用户名</label>
+      <input id="user" name="user">
+      <label for="pass">密码</label>
+      <input id="pass" name="pass" type="password">
+      <button type="button" id="login">进入工作台</button>
+      <p id="welcome" hidden>工作台已打开</p>
+    </form>
+    <div class="card">
+      <button type="button" class="danger" id="logout">退出登录</button>
+      <button type="button" class="danger" id="delete">删除账号</button>
+    </div>
+  </main>
+  <script>
+    const q = document.getElementById("q");
+    q.addEventListener("input", () => {
+      const value = q.value.toLowerCase();
+      document.querySelectorAll("#results a").forEach((link) => {
+        const hay = (link.textContent + " " + (link.dataset.title || "")).toLowerCase();
+        link.hidden = Boolean(value) && !hay.includes(value);
+      });
+    });
+    document.getElementById("login").addEventListener("click", () => {
+      document.getElementById("welcome").hidden = false;
+    });
+  </script>
+</body>
+</html>

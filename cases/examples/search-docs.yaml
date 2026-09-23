@@ -1,0 +1,16 @@
+id: search-docs
+name: 搜索并打开文档
+start:
+  url: examples/app/index.html
+goal: 搜索 Pilot 并打开第一篇文档
+tags: [smoke, example]
+steps:
+  - op: type
+    target: {role: searchbox, name: 搜索}
+    value: Pilot
+  - op: click
+    target: {role: link, name: Pilot 入门}
+  - op: assert
+    url_includes: docs.html
+    visible_text: 入门
+    title_includes: Pilot 入门

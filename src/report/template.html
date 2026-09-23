@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{title}}</title>
+  <style>
+    :root, html[data-theme="light"] {
+      color-scheme: light;
+      --bg: #f0f3f6;
+      --sheet: #ffffff;
+      --ink: #1a2332;
+      --muted: #5a6578;
+      --line: #d5dde8;
+      --acc: #0f6b4c;
+      --acc-soft: #e6f4ee;
+      --acc-fg: #fff;
+      --card: #f8fafc;
+      --chip: #fff;
+      --head: #fbfcfd;
+      --code-bg: #eef2f6;
+      --bar-track: #e8edf3;
+      --hero-a: #d9ebe3;
+      --hero-b: #d6e4f5;
+      --toolbar-bg: color-mix(in srgb, var(--sheet) 92%, transparent);
+      --pass: #0f6b4c;
+      --pass-soft: #e6f4ee;
+      --fail: #b42318;
+      --fail-soft: #fde8e4;
+      --skip: #9a6700;
+      --skip-soft: #fef3c7;
+      --blocked: #6b3fa0;
+      --blocked-soft: #f3eafb;
+      --kicker: #5a6578;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --sans: "Segoe UI", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0f141b;
+      --sheet: #1a222c;
+      --ink: #e8edf2;
+      --muted: #9aa7b5;
+      --line: #2f3b49;
+      --acc: #3ecf8e;
+      --acc-soft: #163526;
+      --acc-fg: #0b1a12;
+      --card: #141b24;
+      --chip: #1f2833;
+      --head: #162029;
+      --code-bg: #24303b;
+      --bar-track: #24303b;
+      --hero-a: #1a2e28;
+      --hero-b: #1a2433;
+      --toolbar-bg: color-mix(in srgb, var(--sheet) 88%, transparent);
+      --pass: #3ecf8e;
+      --pass-soft: #163526;
+      --fail: #ff8a80;
+      --fail-soft: #3a1d1c;
+      --skip: #e6c35c;
+      --skip-soft: #3a3218;
+      --blocked: #c4a1ff;
+      --blocked-soft: #2a1f3d;
+      --kicker: #9aa7b5;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      font: 14px/1.55 var(--sans);
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 500px at 10% -10%, var(--hero-a) 0%, transparent 55%),
+        radial-gradient(900px 400px at 100% 0%, var(--hero-b) 0%, transparent 50%),
+        var(--bg);
+    }
+    button { font: inherit; }
+    a { color: var(--acc); }
+    .prefs {
+      position: sticky; top: 0; z-index: 20;
+      display: flex; justify-content: flex-end; gap: 8px;
+      padding: 10px 18px;
+      background: var(--toolbar-bg);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--line);
+    }
+    .prefs .group {
+      display: flex; gap: 4px; align-items: center; padding: 2px;
+      border: 1px solid var(--line); border-radius: 999px; background: var(--sheet);
+    }
+    .prefs button {
+      appearance: none; border: 0; background: transparent; color: var(--muted);
+      font-size: 12px; font-weight: 600; letter-spacing: .02em;
+      padding: 6px 12px; border-radius: 999px; cursor: pointer;
+    }
+    .prefs button[aria-pressed="true"] { background: var(--acc); color: var(--acc-fg); }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 22px 18px 64px; }
+    .hero {
+      background: var(--sheet);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 22px 24px;
+      margin-bottom: 18px;
+      box-shadow: 0 1px 0 rgba(26, 35, 50, .04);
+    }
+    .kicker {
+      margin: 0 0 6px;
+      font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+    }
+    h1 { margin: 0 0 8px; font-size: 24px; letter-spacing: -.02em; }
+    .meta-row { display: flex; flex-wrap: wrap; gap: 10px 18px; font-size: 12.5px; color: var(--muted); }
+    .meta-row code, .meta-row b {
+      font-family: var(--mono); font-size: 11.5px; font-weight: 600;
+      background: var(--code-bg); padding: 1px 5px; border-radius: 4px; color: var(--ink);
+    }
+    .stats { display: grid; grid-template-columns: 1.4fr .8fr; gap: 14px; margin: 18px 0 0; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+    }
+    .card h2 {
+      margin: 0 0 10px; font-size: 13px; color: var(--muted); font-weight: 600;
+      letter-spacing: .04em; text-transform: uppercase;
+    }
+    .chip-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .stat-chip {
+      min-width: 88px; padding: 10px 12px; border-radius: 10px;
+      border: 1px solid var(--line); background: var(--chip);
+    }
+    .stat-chip .n { display: block; font-size: 22px; font-weight: 700; line-height: 1.1; }
+    .stat-chip .l { font-size: 11px; color: var(--muted); letter-spacing: .06em; }
+    .stat-chip.pass { background: var(--pass-soft); border-color: color-mix(in srgb, var(--pass) 35%, var(--line)); }
+    .stat-chip.pass .n { color: var(--pass); }
+    .stat-chip.fail { background: var(--fail-soft); border-color: color-mix(in srgb, var(--fail) 35%, var(--line)); }
+    .stat-chip.fail .n { color: var(--fail); }
+    .bar-row { display: grid; grid-template-columns: 52px 1fr 48px; gap: 8px; align-items: center; margin: 6px 0; font-size: 12px; }
+    .bar { height: 8px; background: var(--bar-track); border-radius: 99px; overflow: hidden; }
+    .bar i { display: block; height: 100%; background: var(--acc); border-radius: 99px; }
+    .panel {
+      background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px 8px;
+    }
+    .panel-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+    .panel-head h2 { margin: 0; font-size: 18px; }
+    .panel-head .count {
+      font-size: 12px; background: var(--acc-soft); color: var(--acc);
+      padding: 2px 8px; border-radius: 999px;
+    }
+    .case-list { display: flex; flex-direction: column; gap: 10px; }
+    details.case {
+      border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--chip);
+    }
+    details.case > summary {
+      list-style: none; cursor: pointer;
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px; background: var(--head); user-select: none;
+    }
+    details.case > summary::-webkit-details-marker { display: none; }
+    .case-no {
+      flex: none; font-family: var(--mono); font-size: 11px; color: var(--muted);
+    }
+    .grow { flex: 1; min-width: 0; }
+    details.case h3 {
+      margin: 0; font-size: 14px; font-weight: 600;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    details.case small { color: var(--muted); font-size: 12px; }
+    .pill {
+      display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .04em;
+      padding: 2px 7px; border-radius: 999px;
+    }
+    .pill.pass { background: var(--pass-soft); color: var(--pass); }
+    .pill.fail { background: var(--fail-soft); color: var(--fail); }
+    .pill.skip { background: var(--skip-soft); color: var(--skip); }
+    .pill.blocked { background: var(--blocked-soft); color: var(--blocked); }
+    .time { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+    .chevron {
+      width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
+      transform: rotate(45deg); margin: 0 4px 4px 2px; transition: transform .15s;
+    }
+    details[open] > summary .chevron { transform: rotate(225deg); margin-bottom: 0; }
+    .body { padding: 4px 14px 14px; border-top: 1px solid var(--line); }
+    .goal {
+      color: var(--muted); font-size: 13px; padding: 10px 12px;
+      background: var(--card); border: 1px solid var(--line); border-radius: 10px; margin: 12px 0;
+    }
+    details.outline {
+      margin: 12px 0; border-radius: 10px;
+      background: var(--card); border: 1px solid var(--line);
+    }
+    details.outline > summary {
+      list-style: none; cursor: pointer;
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px; user-select: none;
+    }
+    details.outline > summary::-webkit-details-marker { display: none; }
+    details.outline > summary .kicker { margin: 0; flex: 1; }
+    details.outline > summary .plan-time { font-size: 12px; color: var(--muted, #667); white-space: nowrap; }
+    details.outline ol { margin: 0 14px 10px; padding-left: 18px; }
+    details.outline li { margin: 4px 0; }
+    details.outline p { margin: 0 14px 12px; font-size: 13px; }
+    .steps { display: flex; flex-direction: column; }
+    details.step-row { display: block; padding: 4px 0; border-top: 1px solid var(--line); }
+    details.step-row > summary {
+      list-style: none; cursor: pointer;
+      display: flex; align-items: center; gap: 12px; padding: 8px 0;
+    }
+    details.step-row > summary::-webkit-details-marker { display: none; }
+    details.step-row > summary .grow {
+      display: flex; align-items: baseline; gap: 10px; min-width: 0;
+    }
+    details.step-row > summary b { flex: none; }
+    details.step-row > summary p {
+      margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .step-body {
+      display: grid; grid-template-columns: minmax(0, 1fr) 240px;
+      grid-template-areas: "times shot" "detail detail";
+      gap: 12px 16px; align-items: start; padding: 4px 0 14px;
+    }
+    .step-body > .times { grid-area: times; }
+    .step-body > .card-detail { grid-area: detail; }
+    .step-body > .shot { grid-area: shot; }
+    .step-body > .http, .step-body > .err { grid-column: 1 / -1; }
+    details.step-row.no-shot .step-body {
+      grid-template-columns: 1fr;
+      grid-template-areas: "times" "detail";
+    }
+    .t-item b {
+      display: block; font-size: 11px; letter-spacing: .08em;
+      color: var(--muted); font-weight: 700;
+    }
+    .t-item p { margin: 4px 0 0; font-size: 13px; }
+    details.step-row .times {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+      gap: 8px;
+    }
+    details.step-row .times .phase {
+      display: flex; flex-direction: column; gap: 4px;
+      padding: 10px 12px; border-radius: 10px;
+      background: var(--card); border: 1px solid var(--line);
+    }
+    details.step-row .times .phase em {
+      font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: .04em;
+      line-height: 1.2; color: var(--muted); white-space: nowrap;
+    }
+    details.step-row .times .phase b {
+      display: block; font-size: 13px; font-weight: 650; line-height: 1.2; color: var(--ink);
+      font-variant-numeric: tabular-nums; white-space: nowrap;
+    }
+    details.step-row .times .phase small {
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      margin: 0; color: var(--muted); font-size: 10px; line-height: 1.35;
+      font-variant-numeric: tabular-nums; overflow: hidden;
+    }
+    details.step-row .times .phase small:empty { display: none; }
+    details.step-row .times .phase small span { display: block; color: inherit; font-size: inherit; }
+    details.step-row .times .phase.model { background: var(--acc-soft); }
+    details.step-row .times .phase.can-open { cursor: pointer; }
+    details.step-row .times .phase.can-open.open {
+      border-color: var(--acc);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 22%, transparent);
+    }
+    .card-detail {
+      margin: 0; padding: 0; border-radius: 10px;
+      background: var(--sheet); border: 1px solid var(--line);
+      color: var(--ink); font-size: 12px; line-height: 1.5;
+      max-height: 420px; overflow: auto;
+    }
+    .card-detail[hidden] { display: none; }
+    .card-detail .sec + .sec { border-top: 1px solid var(--line); }
+    .card-detail .sec > header {
+      padding: 10px 14px 0;
+      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .card-detail .sec-b { padding: 8px 14px 12px; }
+    .card-detail dl { margin: 0; display: grid; gap: 8px; }
+    .card-detail dl > div {
+      display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 8px 12px; align-items: start;
+    }
+    .card-detail dl > div.stack { grid-template-columns: 1fr; gap: 4px; }
+    .card-detail dt { color: var(--muted); font-weight: 650; }
+    .card-detail dd { margin: 0; color: var(--ink); word-break: break-word; }
+    .card-detail .els { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 2px; }
+    .card-detail .els li {
+      display: grid; grid-template-columns: 40px 92px minmax(0, 1fr);
+      gap: 8px; padding: 5px 8px; border-radius: 8px; font-variant-numeric: tabular-nums;
+    }
+    .card-detail .els li:nth-child(odd) { background: var(--card); }
+    .card-detail .els i { color: var(--muted); font-style: normal; font-weight: 650; }
+    .card-detail .els b { font-weight: 650; }
+    .card-detail .els span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .card-detail p { margin: 0 0 6px; white-space: pre-wrap; word-break: break-word; }
+    .card-detail p:last-child { margin-bottom: 0; }
+    .shot {
+      width: 100%; max-width: 240px; justify-self: end;
+      border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--sheet);
+      cursor: zoom-in;
+    }
+    .shot img {
+      display: block; width: 100%; height: 148px; object-fit: cover; object-position: top;
+      background: var(--sheet);
+    }
+    .shot i {
+      display: block; padding: 8px 10px; font-style: normal; color: var(--muted); font-size: 11px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .err { color: var(--fail); white-space: pre-wrap; margin: 12px 0 0; font-size: 13px; }
+    .http { color: var(--muted); font-size: 12px; word-break: break-all; }
+    .rec-row {
+      display: inline-flex; flex: none; align-items: center; gap: 6px;
+      margin-right: 4px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px;
+      background: var(--chip); color: var(--ink); font-size: 12px; font-weight: 650; cursor: pointer;
+    }
+    .rec-row:before {
+      content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--fail); flex: none;
+    }
+    dialog { border: 0; padding: 0; background: transparent; }
+    dialog::backdrop { background: rgba(15, 20, 27, .55); }
+    dialog img {
+      display: block; width: auto; height: auto; max-width: 92vw; max-height: 88vh;
+      object-fit: contain; background: var(--sheet); border-radius: 14px;
+    }
+    dialog video {
+      display: block; width: min(92vw, 1120px); max-height: 86vh;
+      background: #0f172a; border-radius: 12px;
+    }
+    .footer { color: var(--muted); font-size: 12px; margin: 18px 2px 0; }
+    @media (max-width: 800px) { .stats { grid-template-columns: 1fr; } }
+    @media (max-width: 860px) {
+      .step-body, details.step-row.no-shot .step-body {
+        grid-template-columns: 1fr;
+        grid-template-areas: "times" "shot" "detail";
+      }
+      .shot { max-width: none; }
+    }
+    @media print {
+      .prefs { display: none; }
+      body { background: #fff; }
+      .hero, details.case { box-shadow: none; }
+    }
+  </style>
+</head>
+<body class="outcome-{{outcome}}">
+  <div class="prefs" role="toolbar" aria-label="Language and theme">
+    <div class="group" role="group" aria-label="Language">
+      <button type="button" data-set-lang="zh" aria-pressed="false">中文</button>
+      <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
+    </div>
+    <div class="group" role="group" aria-label="Theme">
+      <button type="button" data-set-theme="light" aria-pressed="true"><span data-zh="白天" data-en="Light">Light</span></button>
+      <button type="button" data-set-theme="dark" aria-pressed="false"><span data-zh="黑夜" data-en="Dark">Dark</span></button>
+    </div>
+  </div>
+  <div class="wrap">
+    <header class="hero">
+      <p class="kicker">codexqa-jev-browser</p>
+      <h1><span data-en="Browser replay report" data-zh="浏览器回放报告">Browser replay report</span></h1>
+      <div class="meta-row">
+        <span>Run ID: <code>{{run_id}}</code></span>
+        <span><span data-en="Duration" data-zh="耗时">Duration</span>: <b>{{duration_label}}</b></span>
+        <span><span data-en="Steps" data-zh="步骤">Steps</span>: <b>{{steps}}</b></span>
+        <span><span data-en="Start" data-zh="开始">Start</span>: <b title="{{started_full}}">{{started_label}}</b></span>
+        <span><span data-en="End" data-zh="结束">End</span>: <b title="{{finished_full}}">{{finished_label}}</b></span>
+        <span>{{browser}}</span>
+        <span>{{viewport}}</span>
+      </div>
+      <div class="stats">
+        <div class="card">
+          <h2><span data-en="Result" data-zh="结果">Result</span></h2>
+          <div class="chip-row">
+            <div class="stat-chip"><span class="n">{{total}}</span><span class="l" data-en="CASES" data-zh="用例">CASES</span></div>
+            <div class="stat-chip pass"><span class="n">{{passed}}</span><span class="l" data-en="PASSED" data-zh="通过">PASSED</span></div>
+            <div class="stat-chip {{failed_class}}"><span class="n">{{failed}}</span><span class="l" data-en="FAILED" data-zh="失败">FAILED</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <h2><span data-en="Pass rate" data-zh="通过率">Pass rate</span></h2>
+          <div class="bar-row">
+            <span data-en="Pass" data-zh="通过">Pass</span>
+            <div class="bar"><i style="width:{{pass_rate}}"></i></div>
+            <b>{{pass_rate}}</b>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2 data-en="Cases" data-zh="用例回放">Cases</h2>
+        <span class="count">{{total}}</span>
+      </div>
+      <div class="case-list">{{cases}}</div>
+    </section>
+    <p class="footer"><span data-en="Local HTML from codexqa-jev-browser. Screenshots stay in this run folder." data-zh="由 codexqa-jev-browser 在本地生成。截图留在这次运行的目录里。">Local HTML from codexqa-jev-browser. Screenshots stay in this run folder.</span></p>
+  </div>
+
+  <dialog id="zoom" onclick="this.close()"><img alt=""></dialog>
+  <dialog id="player"><video controls playsinline></video></dialog>
+  <script>
+    const zoom = document.getElementById("zoom");
+    document.querySelectorAll(".shot").forEach((card) => {
+      const img = card.querySelector("img");
+      if (!img) return;
+      card.addEventListener("click", () => {
+        zoom.querySelector("img").src = img.src;
+        zoom.querySelector("img").alt = img.alt || "";
+        zoom.showModal();
+      });
+    });
+    const player = document.getElementById("player");
+    const playerVideo = player.querySelector("video");
+    document.querySelectorAll(".rec-row").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        playerVideo.src = button.dataset.video;
+        player.showModal();
+        playerVideo.play();
+      });
+    });
+    player.addEventListener("click", (event) => {
+      if (event.target === player) player.close();
+    });
+    player.addEventListener("close", () => {
+      playerVideo.pause();
+      playerVideo.removeAttribute("src");
+      playerVideo.load();
+    });
+    const langButtons = [...document.querySelectorAll("[data-set-lang]")];
+    const themeButtons = [...document.querySelectorAll("[data-set-theme]")];
+    function applyLang(lang) {
+      const next = lang === "zh" ? "zh" : "en";
+      document.documentElement.lang = next === "zh" ? "zh-CN" : "en";
+      document.documentElement.dataset.lang = next;
+      document.querySelectorAll("[data-en]").forEach((el) => {
+        el.textContent = next === "zh" ? el.dataset.zh || "" : el.dataset.en || "";
+      });
+      document.querySelectorAll(".phase.open").forEach((card) => {
+        const panel = card.closest(".step-body")?.querySelector(".card-detail");
+        if (panel && !panel.hidden) panel.innerHTML = renderDetail(detailText(card, next));
+      });
+      for (const button of langButtons) button.setAttribute("aria-pressed", String(button.dataset.setLang === next));
+      try { localStorage.setItem("codexqa-jev-browser-report-lang", next); } catch { /* private mode */ }
+    }
+    function applyTheme(theme) {
+      const next = theme === "dark" ? "dark" : "light";
+      document.documentElement.dataset.theme = next;
+      for (const button of themeButtons) button.setAttribute("aria-pressed", String(button.dataset.setTheme === next));
+      try { localStorage.setItem("codexqa-jev-browser-report-theme", next); } catch { /* private mode */ }
+    }
+    function detailText(card, lang) {
+      return lang === "zh" ? card.dataset.detailZh || "" : card.dataset.detailEn || "";
+    }
+    function esc(text) {
+      return String(text).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+    }
+    function renderDetail(text) {
+      const headers = new Set(["Input", "Reply", "Thinking", "输入", "回复", "思考", "Action", "动作"]);
+      const sections = [];
+      let current = { title: "", body: [] };
+      for (const line of String(text).split("\n")) {
+        if (headers.has(line.trim())) {
+          if (current.title || current.body.length) sections.push(current);
+          current = { title: line.trim(), body: [] };
+        } else current.body.push(line);
+      }
+      if (current.title || current.body.length) sections.push(current);
+      return sections.map((sec) => {
+        const head = sec.title ? `<header>${esc(sec.title)}</header>` : "";
+        return `<section class="sec">${head}<div class="sec-b">${formatDetailBody(sec.body)}</div></section>`;
+      }).join("");
+    }
+    function formatDetailBody(lines) {
+      const chunks = [];
+      let kv = [];
+      let list = [];
+      let para = [];
+      const flushKv = () => {
+        if (!kv.length) return;
+        chunks.push(`<dl>${kv.join("")}</dl>`);
+        kv = [];
+      };
+      const flushList = () => {
+        if (!list.length) return;
+        chunks.push(`<ul class="els">${list.join("")}</ul>`);
+        list = [];
+      };
+      const flushPara = () => {
+        if (!para.length) return;
+        chunks.push(`<p>${esc(para.join("\n"))}</p>`);
+        para = [];
+      };
+      for (const raw of lines) {
+        const line = raw.replace(/\s+$/, "");
+        if (!line.trim()) { flushKv(); flushList(); flushPara(); continue; }
+        const el = line.match(/^\s*\[([^\]]+)\]\s+(\S+)\s+(.*)$/);
+        if (el) {
+          flushKv(); flushPara();
+          list.push(`<li><i>${esc(el[1])}</i><b>${esc(el[2])}</b><span title="${esc(el[3])}">${esc(el[3])}</span></li>`);
+          continue;
+        }
+        const pair = line.match(/^([\w\u4e00-\u9fff]{1,20})\s*[:：]\s*(.*)$/);
+        if (pair && !/^https?:/.test(line)) {
+          flushList(); flushPara();
+          const stacked = pair[2].length > 80 || pair[1] === "goal";
+          kv.push(`<div${stacked ? ' class="stack"' : ""}><dt>${esc(pair[1])}</dt><dd>${esc(pair[2] || "—")}</dd></div>`);
+          continue;
+        }
+        flushKv(); flushList();
+        para.push(line);
+      }
+      flushKv(); flushList(); flushPara();
+      return chunks.join("") || `<p>${esc(lines.join("\n"))}</p>`;
+    }
+    document.querySelectorAll(".phase.can-open").forEach((card) => {
+      const toggle = () => {
+        const body = card.closest(".step-body");
+        const panel = body?.querySelector(".card-detail");
+        if (!panel) return;
+        const lang = document.documentElement.lang.startsWith("zh") ? "zh" : "en";
+        const same = card.classList.contains("open");
+        body.querySelectorAll(".phase.open").forEach((el) => el.classList.remove("open"));
+        if (same) {
+          panel.hidden = true;
+          return;
+        }
+        panel.hidden = false;
+        panel.innerHTML = renderDetail(detailText(card, lang));
+        card.classList.add("open");
+      };
+      card.addEventListener("click", toggle);
+      card.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          toggle();
+        }
+      });
+    });
+    for (const button of langButtons) button.addEventListener("click", () => applyLang(button.dataset.setLang));
+    for (const button of themeButtons) button.addEventListener("click", () => applyTheme(button.dataset.setTheme));
+    let stored = "en";
+    let theme = "light";
+    try {
+      stored = localStorage.getItem("codexqa-jev-browser-report-lang") || "en";
+      theme = localStorage.getItem("codexqa-jev-browser-report-theme") || "light";
+    } catch { /* private mode */ }
+    applyLang(stored);
+    applyTheme(theme);
+  </script>
+</body>
+</html>
