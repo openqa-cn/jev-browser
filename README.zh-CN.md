@@ -54,17 +54,28 @@ cp .env.example .env   # 现场 auto / generate --goal 才需要
 
 ## 模型
 
-CLI 自己调用 Jev 或兼容 OpenAI 的接口。宿主里的 Cursor / Codex 会话不是决策模型。
+CLI 自己调用 Jev 或兼容 OpenAI 的接口。宿主里的 Cursor / Codex 会话不是决策模型。把 `.env.example` 复制成 `.env` 再填写。CLI 先读当前目录的 `.env`，再读仓库根目录的 `.env`，不覆盖 shell 里已经存在的变量。不要提交 `.env`。
 
-| 调用 | 时机 | 密钥 |
+```bash
+# 每一步决策：点哪个控件、输入目标里的哪一句、这一步是否生效、任务是否结束。
+TYPESAFE_API_KEY=
+TYPESAFE_MODEL=jev-latest
+TYPESAFE_BASE_URL=https://api.typesafe.ai/v1
+
+# 打开页面前的任务规划。没有 TYPESAFE_API_KEY 时，也负责整步决策和结束确认。
+OPENAI_API_KEY=
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_MODEL=gpt-4o-mini
+TEXT_MODEL=gpt-4o-mini
+```
+
+| 调用 | 时机 | 变量 |
 | --- | --- | --- |
-| Jev `/systemone` | 每步的操作与目标、这一步是否生效，以及任务是否已经结束 | `TYPESAFE_API_KEY`。可选：`TYPESAFE_MODEL`（`jev-latest`）、`TYPESAFE_BASE_URL` |
-| Chat completions | 任务规划。未配置 Jev 时也负责整步决策和结束确认 | `OPENAI_API_KEY`。可选：`OPENAI_BASE_URL`、`OPENAI_MODEL`、`TEXT_MODEL` |
+| Jev `/systemone` | 每步的操作与目标、要输入的短语、这一步是否生效，以及任务是否已经结束 | `TYPESAFE_API_KEY`。可选：`TYPESAFE_MODEL`、`TYPESAFE_BASE_URL` |
+| Chat completions | 打开浏览器之前的任务规划。未配置 Jev 时也负责整步决策和结束确认 | `OPENAI_API_KEY`、`OPENAI_BASE_URL`、`OPENAI_MODEL`。`TEXT_MODEL` 默认跟 `OPENAI_MODEL` |
 | 不调用 | `observe`、`run`、`explore`、`auto --decisions`、`generate --decisions` | — |
 
-决策来源的优先级：`--decisions` 脚本，然后是已设置 `TYPESAFE_API_KEY` 时的 Jev，最后是 chat completions。`--model` 和 `--base-url` 覆盖对话模型与网关。`codexqa-jev-browser.config.yaml` 可以用 `${OPENAI_API_KEY}` 这种占位符。CLI 先加载当前目录的 `.env`，再在需要时加载仓库根目录的 `.env`，且不覆盖 shell 里已经存在的变量。不要传 `--api-key`，也不要把原始密钥写进用例文件。
-
-即使每一步点击由 Jev 选择，现场 `auto` / `generate --goal` 的规划器仍然需要 `OPENAI_API_KEY`。
+决策来源的优先级：`--decisions` 脚本，然后是已设置 `TYPESAFE_API_KEY` 时的 Jev，最后是 chat completions。`--model` 和 `--base-url` 覆盖对话模型与网关。`codexqa-jev-browser.config.yaml` 可以用 `${OPENAI_API_KEY}` 这种占位符。不要传 `--api-key`，也不要把原始密钥写进用例文件。网关需要代理时再设置 `HTTPS_PROXY`。CLI 不会探测本机代理端口。
 
 ## 命令
 

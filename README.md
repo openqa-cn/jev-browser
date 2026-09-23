@@ -54,17 +54,28 @@ Node.js 20 or newer.
 
 ## Model
 
-The CLI calls Jev or an OpenAI-compatible API itself. The host Cursor or Codex session is not the decision model.
+The CLI calls Jev or an OpenAI-compatible API itself. The host Cursor or Codex session is not the decision model. Copy `.env.example` to `.env` and fill it in. The CLI reads `cwd/.env`, then the repo-root `.env`, and does not override variables already set in the shell. Do not commit `.env`.
 
-| Call | When | Key |
+```bash
+# Per-step decision: which control, which goal phrase to type, whether the step worked, whether the task is done.
+TYPESAFE_API_KEY=
+TYPESAFE_MODEL=jev-latest
+TYPESAFE_BASE_URL=https://api.typesafe.ai/v1
+
+# Task plan before the case runs. Also the decision and the done check when TYPESAFE_API_KEY is unset.
+OPENAI_API_KEY=
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_MODEL=gpt-4o-mini
+TEXT_MODEL=gpt-4o-mini
+```
+
+| Call | When | Variables |
 | --- | --- | --- |
-| Jev `/systemone` | Per-step operation and target, the per-step effect verdict, and whether the task is done | `TYPESAFE_API_KEY`. Optional: `TYPESAFE_MODEL` (`jev-latest`), `TYPESAFE_BASE_URL` |
-| Chat completions | Task plan. Also the whole decision and the done check when Jev is unset | `OPENAI_API_KEY`. Optional: `OPENAI_BASE_URL`, `OPENAI_MODEL`, `TEXT_MODEL` |
+| Jev `/systemone` | Per-step operation and target, the text to type, the per-step effect verdict, and whether the task is done | `TYPESAFE_API_KEY`. Optional: `TYPESAFE_MODEL`, `TYPESAFE_BASE_URL` |
+| Chat completions | Task plan, before the browser opens. Also the whole decision and the done check when Jev is unset | `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`. `TEXT_MODEL` defaults to `OPENAI_MODEL` |
 | None | `observe`, `run`, `explore`, `auto --decisions`, `generate --decisions` | — |
 
-Priority for the decision provider: `--decisions` script, then Jev when `TYPESAFE_API_KEY` is set, then chat completions. `--model` and `--base-url` override the chat model and gateway. `codexqa-jev-browser.config.yaml` may use `${OPENAI_API_KEY}`-style placeholders. The CLI loads `cwd/.env`, then the repo-root `.env`, and does not overwrite variables already set in the shell. Do not pass `--api-key` or put a raw key in a case file.
-
-Live `auto` / `generate --goal` still needs `OPENAI_API_KEY` for the planner, even when Jev chooses each click.
+Priority for the decision provider: `--decisions` script, then Jev when `TYPESAFE_API_KEY` is set, then chat completions. `--model` and `--base-url` override the chat model and gateway. `codexqa-jev-browser.config.yaml` may use `${OPENAI_API_KEY}`-style placeholders. Do not pass `--api-key` or put a raw key in a case file. Set `HTTPS_PROXY` only if the gateway needs it. The CLI does not probe local proxy ports.
 
 ## Commands
 
