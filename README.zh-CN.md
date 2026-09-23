@@ -113,7 +113,8 @@ examples/app/       本地小页面，给上面的命令和测试用
 references/         步骤格式和示例
 tests/              离线检查，不访问真实网站，也不调用线上模型
 agents/openai.yaml  在 Agents 界面上显示的名称和短说明
-docs/jev-browser-overview.jpg 本 README 顶部的产品介绍图
+docs/jev-browser-overview.jpg    本 README 顶部的中文产品介绍图
+docs/jev-browser-overview.en.jpg 英文 README 顶部的英文产品介绍图
 docs/jev-report.png 「执行报告」一节里的报告截图
 reports/            每次运行一个目录。已被 git 忽略
 ```
