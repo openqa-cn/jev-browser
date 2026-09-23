@@ -4,7 +4,7 @@
 
 **Jev Browser** 是 [CodexQA](https://github.com/openqa-cn/codexqa) 里的一个技能。CodexQA 是一组本地 Agent Skill，用来在代码写完之后检查它到底好不好。本仓库是独立项目，同一技能也可以从 CodexQA 目录安装。
 
-<p align="center"><a href="https://htmlpreview.github.io/?https://github.com/openqa-cn/codexqa/blob/main/docs/assets/previews/jev-report.html"><img src="docs/jev-report.png" alt="Jev Browser HTML 回放报告" width="720"></a></p>
+<p align="center"><a href="https://htmlpreview.github.io/?https://github.com/openqa-cn/codexqa/blob/main/docs/assets/previews/jev-report.html"><img src="docs/jev-report.png" alt="Jev Browser HTML 执行报告" width="720"></a></p>
 
 用 GUI 模型做浏览器自动化时，每一步都要把截图送给视觉模型找控件。识别要付视觉 token，回路要等模型看图，点选落在坐标上。
 
