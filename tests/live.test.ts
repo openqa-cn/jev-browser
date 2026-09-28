@@ -288,4 +288,42 @@ describe("live browser flows", () => {
       await session.close();
     }
   });
+
+  it("applies each case storage state instead of keeping the first", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "codexqa-jev-browser-auth-"));
+    const first = path.join(dir, "first.json");
+    const second = path.join(dir, "second.json");
+    const cookie = (value: string) => ({
+      cookies: [
+        {
+          name: "session",
+          value,
+          domain: "example.com",
+          path: "/",
+          expires: -1,
+          httpOnly: false,
+          secure: false,
+          sameSite: "Lax",
+        },
+      ],
+      origins: [],
+    });
+    writeFileSync(first, JSON.stringify(cookie("one")));
+    writeFileSync(second, JSON.stringify(cookie("two")));
+    const config = { ...defaultConfig(), headless: true, reportsDir: mkdtempSync(path.join(tmpdir(), "codexqa-jev-browser-auth-run-")) };
+    const writer = new ReportWriter(config.reportsDir, "auth-1", false);
+    const session = new BrowserSession(config);
+    try {
+      await session.start();
+      const runner = new CaseRunner(session, writer);
+      await runner.runCase(normalizeCase({ id: "first", start: { url: app, storage_state: first }, steps: [{ op: "wait", wait_ms: 1 }] }));
+      const afterFirst = await session.page?.context().cookies("https://example.com");
+      expect(afterFirst?.map((item) => item.value)).toEqual(["one"]);
+      await runner.runCase(normalizeCase({ id: "second", start: { url: app, storage_state: second }, steps: [{ op: "wait", wait_ms: 1 }] }));
+      const afterSecond = await session.page?.context().cookies("https://example.com");
+      expect(afterSecond?.map((item) => item.value)).toEqual(["two"]);
+    } finally {
+      await session.close();
+    }
+  });
 });

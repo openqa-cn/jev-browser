@@ -97,6 +97,26 @@ describe("step timing shortcuts", () => {
         },
       }),
     ).toBe("pass");
+    expect(
+      assessActionEffect({
+        op: "type",
+        value: "Pilot",
+        before: {
+          url: "https://example.com",
+          title: "Demo",
+          elements: [{ index: "1", role: "searchbox", name: "搜索", value: "", operations: [], within: "" }],
+        },
+        after: {
+          url: "https://example.com",
+          title: "Demo",
+          text: "Pilot 入门",
+          elements: [
+            { index: "1", role: "searchbox", name: "搜索", value: "", operations: [], within: "" },
+            { index: "2", role: "link", name: "Pilot 入门", value: "", operations: [], within: "" },
+          ],
+        },
+      }),
+    ).toBe("fail");
   });
 
   it("turns a goal into planned steps and a visible done condition", async () => {

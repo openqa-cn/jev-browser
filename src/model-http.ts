@@ -30,11 +30,9 @@ export async function modelFetch(
   try {
     return await dispatch(url, init, proxy);
   } catch (error) {
-    if (!proxy) throw error;
-    if (!envProxyUrl()) {
-      cachedProxy = undefined;
-      resolved = true;
-    }
+    if (!proxy || envProxyUrl()) throw error;
+    cachedProxy = undefined;
+    resolved = true;
     return await dispatch(url, init, undefined);
   }
 }

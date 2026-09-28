@@ -114,9 +114,6 @@ export async function execute(
     const finishPopup = session.watchPopup();
     const previous = session.url;
     await handle.click({ timeout: 2500 });
-    if (session.page && session.url === previous) {
-      await session.page.waitForEvent("popup", { timeout: 800 }).catch(() => undefined);
-    }
     await finishPopup();
     if (session.url !== previous) await waitForLateControls(session);
   } else if (kind === "type") {

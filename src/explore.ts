@@ -99,12 +99,14 @@ export async function explore(
       } catch {
         /* keep */
       }
-      const dest = addNode(graph, page);
-      graph.edges.push({ source: source.id, target: dest.id, op: "error", name: target.name, role: target.role });
-      status = "fail";
-      error = err instanceof Error ? err.message : String(err);
-      if (!(err instanceof StalePage) && status === "fail") {
-        /* already recorded */
+      if (err instanceof StalePage) {
+        status = "skip";
+        error = "stale page, observed again";
+      } else {
+        const dest = addNode(graph, page);
+        graph.edges.push({ source: source.id, target: dest.id, op: "error", name: target.name, role: target.role });
+        status = "fail";
+        error = err instanceof Error ? err.message : String(err);
       }
     }
     let screenshot: string | undefined;
@@ -138,13 +140,14 @@ export async function explore(
     if (status === "fail") break;
   }
   result.durationMs = Date.now() - started;
-  result.status = result.steps.length
-    ? result.steps.every((step) => step.status === "pass")
+  const acted = result.steps.filter((step) => step.status !== "skip");
+  result.status = !acted.length
+    ? "blocked"
+    : acted.every((step) => step.status === "pass")
       ? "pass"
-      : result.steps.some((step) => step.status === "fail")
+      : acted.some((step) => step.status === "fail")
         ? "fail"
-        : "blocked"
-    : "blocked";
+        : "blocked";
   if (!result.steps.length) result.error = "no safe controls to explore";
   const compiled = result.steps.length
     ? [compileCase(result, url, `Explored path from ${url}`, "explore-path")]

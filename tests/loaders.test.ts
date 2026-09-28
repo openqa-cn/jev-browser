@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { runHttp } from "../src/act.js";
-import { expandStep, loadApiCases, loadMdCases, loadYamlCases, normalizeCase, readPlanTitle } from "../src/cases.js";
+import { expandStep, loadApiCases, loadCases, loadMdCases, loadYamlCases, normalizeCase, parseMdStep, readPlanTitle } from "../src/cases.js";
 import { defaultConfig } from "../src/config.js";
 import { expandVars, jsonpath } from "../src/util.js";
 
@@ -79,6 +79,29 @@ describe("case loaders", () => {
     expect(expandStep(item.steps[0], { UI_PILOT_HTTP_TOKEN: "abc" }).url).toBe("https://example.com/abc");
     expect(expandStep(item.steps[1], { UI_PILOT_HTTP_TOKEN: "abc" }).value).toBe("abc");
     expect(expandVars("keep ${missing}", {}, { keepMissing: true })).toBe("keep ${missing}");
+  });
+
+  it("parses hidden text without also requiring that text to be visible", () => {
+    expect(parseMdStep('Assert hidden text "错误"')).toMatchObject({ op: "assert", hiddenText: "错误" });
+    expect(parseMdStep('Assert hidden text "错误"').visibleText).toBeUndefined();
+    expect(parseMdStep('Assert text "入门" and hidden text "错误"')).toMatchObject({
+      visibleText: "入门",
+      hiddenText: "错误",
+    });
+  });
+
+  it("loads a case directory and rejects a broken case instead of skipping it", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "codexqa-jev-browser-dir-"));
+    writeFileSync(path.join(dir, "decisions.yaml"), "- operation: DONE\n");
+    writeFileSync(
+      path.join(dir, "ok.yaml"),
+      "id: ok\nname: ok\nstart: https://example.com\nsteps:\n  - op: wait\n    wait_ms: 1\n",
+    );
+    const loaded = await loadCases([dir], { config: defaultConfig() });
+    expect(loaded.map((item) => item.id)).toEqual(["ok"]);
+
+    writeFileSync(path.join(dir, "bad.yaml"), "id: bad\nsteps:\n  - op: nope\n");
+    await expect(loadCases([dir], { config: defaultConfig() })).rejects.toThrow(/Unknown op/);
   });
 
   it("rejects case URLs that are not http or https", async () => {

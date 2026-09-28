@@ -2,15 +2,28 @@ import { readFileSync } from "node:fs";
 import { parse as parseYaml } from "yaml";
 import { execute, settle } from "./act.js";
 import type { BrowserSession } from "./browser.js";
-import { DecisionError, StalePage } from "./errors.js";
+import { DecisionError, EmptyField, StalePage } from "./errors.js";
 import { actionMarkLabel, asCandidate, contentKey, controlSnapshot, elementLabel } from "./observe/snapshot.js";
 import { JevProvider, createDecisionProvider, decisionModelLabel, jevAssert, jevConfirmDone } from "./jev.js";
 import { retrieveKnowledge } from "./knowledge.js";
-import { applyHistoryGuards, buildSpace, confirmDone, decide, guideGoal, planTask, resolveDecision, ScriptedProvider, searchQueryFromGoal, selectedIndex, type DecisionProvider } from "./policy.js";
+import { applyHistoryGuards, buildSpace, confirmDone, decide, fieldText, guideGoal, planTask, resolveDecision, ScriptedProvider, searchQueryFromGoal, selectedIndex, type DecisionProvider } from "./policy.js";
 import { emptyCase, ReportWriter } from "./report.js";
 import { assessActionEffect } from "./verify.js";
 import type { CaseResult, ControlSnapshot, Decision, ModelUsage, PageState, PilotConfig, StepResult, TaskPlan } from "./types.js";
 import { elapsedMs, isSecretControl, publicValue } from "./util.js";
+
+export function finishAutoStatus(
+  status: string,
+  steps: { op: string; status: string; error?: string }[],
+  maxSteps: number,
+  error?: string,
+): { status: string; error?: string } {
+  const finished = steps.some((step) => step.op === "done" && step.status === "pass");
+  if (status !== "pass" || finished) return { status, error };
+  const failed = [...steps].reverse().find((step) => step.status === "fail");
+  if (failed) return { status: "fail", error: error || failed.error || "action had no visible effect" };
+  return { status: "blocked", error: error || `stopped at ${maxSteps} steps` };
+}
 
 export function loadScript(file: string): Record<string, unknown>[] {
   const raw = readFileSync(file, "utf8");
@@ -302,10 +315,7 @@ export class Agent {
         error = `stopped at ${this.config.maxSteps} steps`;
       }
     }
-    if (status === "pass" && !result.steps.some((step) => step.op === "done") && result.steps.length >= this.config.maxSteps) {
-      status = "blocked";
-      error = `stopped at ${this.config.maxSteps} steps`;
-    }
+    ({ status, error } = finishAutoStatus(status, result.steps, this.config.maxSteps, error));
     result.status = status;
     result.error = error;
     result.durationMs = Date.now() - started;
@@ -402,19 +412,27 @@ export class Agent {
           textModel = "goal";
         }
       }
-      if (kind === "type" && element && text == null) {
-        return {
-          page,
-          skippedEmpty: true,
-          item: {
-            op: "type",
-            action: elementLabel(element),
-            text: "",
-            page_changed: false,
-            matched: asCandidate(element),
-            operation: decision.operation,
-          },
-        };
+      if (text == null) {
+        try {
+          const filled = await fieldText(context, this.config);
+          text = filled.text;
+          ({ textMs, textModel, textUsage, textThought } = readTextHelper(filled.helper));
+          this.pendingText = { context: key, text, helper: filled.helper };
+        } catch (err) {
+          if (!(err instanceof EmptyField)) throw err;
+          return {
+            page,
+            skippedEmpty: true,
+            item: {
+              op: "type",
+              action: elementLabel(element),
+              text: "",
+              page_changed: false,
+              matched: asCandidate(element),
+              operation: decision.operation,
+            },
+          };
+        }
       }
     }
     const opts = {

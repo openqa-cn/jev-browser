@@ -3,6 +3,7 @@ import { resolveTarget } from "../src/cases.js";
 import { DecisionError, LocatorMiss } from "../src/errors.js";
 import { contentKey } from "../src/observe/snapshot.js";
 import { applyHistoryGuards, buildSpace, packForModel, parseDecision, parseModelJson, ScriptedProvider, validateDecision } from "../src/policy.js";
+import { optionValue } from "../src/runner.js";
 import type { ObservedElement, PageState } from "../src/types.js";
 
 function page(...elements: ObservedElement[]): PageState {
@@ -54,6 +55,30 @@ describe("locator and policy", () => {
     expect(() =>
       validateDecision({ operation: "CLICK", clickTarget: "1", reason: "document.querySelector('a')" }, space),
     ).toThrow(DecisionError);
+  });
+
+  it("selects an exact option and does not fall back to a lookalike", () => {
+    const element = el({
+      index: "3",
+      node: 3,
+      role: "combobox",
+      name: "Day",
+      operations: ["SELECT"],
+      options: [
+        { index: "3:1", label: "10", value: "10" },
+        { index: "3:2", label: "21", value: "21" },
+        { index: "3:3", label: "One way", value: "one" },
+      ],
+    });
+    expect(optionValue(element, "10")).toBe("10");
+    expect(optionValue(element, "1")).toBe("1");
+    expect(optionValue(element, "one way")).toBe("one");
+    const state = page(element);
+    const space = buildSpace(state);
+    const provider = new ScriptedProvider([{ operation: "SELECT", target: { role: "combobox", name: "Day" }, value: "missing" }]);
+    expect(() => provider.choose(state, "pick", [], space)).toThrow(DecisionError);
+    const ok = new ScriptedProvider([{ operation: "SELECT", target: { role: "combobox", name: "Day" }, value: "One way" }]);
+    expect(ok.choose(state, "pick", [], space).selectTarget).toBe("3:3");
   });
 
   it("binds scripted semantic targets to live indexes", () => {

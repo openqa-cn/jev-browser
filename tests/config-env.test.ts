@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { main } from "../src/cli.js";
+import { fileArgs } from "../src/cli.js";
 import { applyCliOverrides, defaultConfig, loadConfig, loadEnv, resolveEnvFile } from "../src/config.js";
 import { DecisionError } from "../src/errors.js";
 import { missingApiKeyMessage, OpenAIProvider } from "../src/policy.js";
@@ -84,6 +85,18 @@ describe("model env and config", () => {
     config.model.apiKey = "";
     expect(() => new OpenAIProvider(config)).toThrow(DecisionError);
     expect(() => new OpenAIProvider(config)).toThrow(/OPENAI_API_KEY[\s\S]*OPENAI_BASE_URL[\s\S]*OPENAI_MODEL[\s\S]*--config/);
+  });
+});
+
+describe("run file args", () => {
+  it("keeps case paths that follow boolean flags", () => {
+    expect(fileArgs(["run", "--no-screenshots", "cases/examples/search-docs.yaml"], "run")).toEqual([
+      "cases/examples/search-docs.yaml",
+    ]);
+    expect(fileArgs(["run", "--headed", "cases/examples/login.yaml"], "run")).toEqual(["cases/examples/login.yaml"]);
+    expect(fileArgs(["run", "--from-api", "https://qa.example.com/cases", "cases/examples/login.yaml"], "run")).toEqual([
+      "cases/examples/login.yaml",
+    ]);
   });
 });
 

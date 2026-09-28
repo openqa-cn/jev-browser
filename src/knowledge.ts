@@ -26,7 +26,7 @@ export function loadKnowledge(root = defaultKnowledgeRoot()): KnowledgeDoc[] {
 
 export function retrieveKnowledge(input: { url?: string; goal?: string; root?: string; limit?: number } = {}): string {
   const host = hostname(input.url);
-  const haystack = `${input.goal ?? ""}\n${input.url ?? ""}`;
+  const haystack = `${input.goal ?? ""}\n${input.url ?? ""}`.toLowerCase();
   const docs = loadKnowledge(input.root);
   const general = docs.filter((doc) => doc.general).sort((a, b) => a.app.localeCompare(b.app));
   const ranked = docs

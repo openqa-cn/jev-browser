@@ -10,12 +10,6 @@ export function assessActionEffect(input: {
   before?: ControlSnapshot;
   after: Pick<PageState, "url" | "title" | "text" | "elements">;
 }): "pass" | "fail" {
-  const afterText = [
-    input.after.text,
-    input.after.title,
-    input.after.url,
-    ...input.after.elements.map((item) => `${item.name} ${item.value}`),
-  ].join("\n");
   const changed =
     !input.before ||
     input.before.url !== input.after.url ||
@@ -25,10 +19,24 @@ export function assessActionEffect(input: {
   if (input.op === "wait") return "pass";
   if (input.op === "type" || input.op === "select") {
     const wanted = input.value?.replace(/\s+/g, "") ?? "";
-    if (wanted && afterText.replace(/\s+/g, "").includes(wanted)) return "pass";
-    return "fail";
+    if (!wanted) return "fail";
+    const landed = input.after.elements.some((item) => {
+      const value = (item.value ?? "").replace(/\s+/g, "");
+      if (!value.includes(wanted)) return false;
+      const previous = input.before?.elements.find((old) => sameField(old, item));
+      if (!input.before) return true;
+      return !(previous?.value ?? "").replace(/\s+/g, "").includes(wanted);
+    });
+    return landed ? "pass" : "fail";
   }
   return changed ? "pass" : "fail";
+}
+
+function sameField(
+  left: { role?: string; name?: string; within?: string },
+  right: { role?: string; name?: string; within?: string },
+): boolean {
+  return (left.role ?? "") === (right.role ?? "") && (left.name ?? "") === (right.name ?? "") && (left.within ?? "") === (right.within ?? "");
 }
 
 export async function assertStep(

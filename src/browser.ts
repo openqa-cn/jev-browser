@@ -32,13 +32,7 @@ export class BrowserSession {
       await this.launchCloak(cloak, headless);
     } else {
       this.browser = await this.launchChromium(headless);
-      this.context = await this.browser.newContext({
-        viewport: { width: this.config.viewportWidth, height: this.config.viewportHeight },
-        storageState: this.options.storageState,
-        extraHTTPHeaders: this.options.headers,
-      });
-      this.page = await this.context.newPage();
-      this.engine = "chromium";
+      await this.openChromiumContext();
     }
     this.watchPages();
     this.page!.setDefaultTimeout(this.config.timeoutMs);
@@ -49,6 +43,30 @@ export class BrowserSession {
     } finally {
       if (!headless) await this.revealWindow();
     }
+  }
+
+  /** Swap cookies and headers when the next case does not share the current start. */
+  async alignStart(start: { storageState?: string; headers?: Record<string, string> } = {}): Promise<void> {
+    const storageState = start.storageState;
+    const headers = start.headers;
+    if ((storageState ?? "") === (this.options.storageState ?? "") && sameHeaders(headers, this.options.headers)) return;
+    if (!this.context && !this.browser) return;
+    this.options = { ...this.options, storageState, headers };
+    const headless = this.options.headed ? false : this.config.headless;
+    const cloak = resolveCloakLaunch(this.config);
+    if (cloak) {
+      await this.context?.close().catch(() => undefined);
+      this.context = null;
+      this.browser = null;
+      this.page = null;
+      await this.launchCloak(cloak, headless);
+    } else if (this.browser) {
+      await this.context?.close().catch(() => undefined);
+      await this.openChromiumContext();
+    }
+    this.watchPages();
+    this.page!.setDefaultTimeout(this.config.timeoutMs);
+    if (this.page) await this.recorder?.follow(this.page).catch(() => undefined);
   }
 
   async goto(url: string): Promise<PageState> {
@@ -220,6 +238,17 @@ export class BrowserSession {
     if (raw.cookies?.length) await this.context.addCookies(raw.cookies);
   }
 
+  private async openChromiumContext(): Promise<void> {
+    if (!this.browser) throw new Error("Browser is not started");
+    this.context = await this.browser.newContext({
+      viewport: { width: this.config.viewportWidth, height: this.config.viewportHeight },
+      storageState: this.options.storageState,
+      extraHTTPHeaders: this.options.headers,
+    });
+    this.page = await this.context.newPage();
+    this.engine = "chromium";
+  }
+
   private async launchChromium(headless: boolean) {
     try {
       return await chromium.launch({ headless });
@@ -246,4 +275,12 @@ export class BrowserSession {
     if (!recorded || !existsSync(recorded) || statSync(recorded).size < 1000) return [];
     return [recorded];
   }
+}
+
+function sameHeaders(left?: Record<string, string>, right?: Record<string, string>): boolean {
+  const a = left ?? {};
+  const b = right ?? {};
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const key of keys) if (a[key] !== b[key]) return false;
+  return true;
 }

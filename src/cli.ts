@@ -133,13 +133,20 @@ async function cmdObserve(url: string | undefined, config: PilotConfig, headed: 
   }
 }
 
-function fileArgs(argv: string[], command: string): string[] {
+const BOOLEAN_FLAGS = new Set(["--headed", "--no-screenshots", "--help", "--md", "--verify", "--force", "-h"]);
+
+export function fileArgs(argv: string[], command: string): string[] {
   const files: string[] = [];
   for (let i = 0; i < argv.length; i += 1) {
     const item = argv[i];
     if (item === command) continue;
+    if (item === "--") {
+      files.push(...argv.slice(i + 1));
+      break;
+    }
     if (item.startsWith("-")) {
-      if (!item.includes("=") && argv[i + 1] && !argv[i + 1].startsWith("-")) i += 1;
+      const takesValue = !item.includes("=") && !BOOLEAN_FLAGS.has(item);
+      if (takesValue && argv[i + 1] && !argv[i + 1].startsWith("-")) i += 1;
       continue;
     }
     files.push(item);

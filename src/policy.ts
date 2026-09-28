@@ -129,7 +129,9 @@ export class ScriptedProvider implements DecisionProvider {
       if (decision.operation === "TYPE") decision.typeTarget = element.index;
       if (decision.operation === "SELECT") {
         const wanted = String(item.value ?? decision.text ?? "");
-        decision.selectTarget = element.options.find((option) => option.value === wanted || option.label === wanted)?.index ?? `${element.index}:1`;
+        const match = element.options.find((option) => option.value === wanted || option.label === wanted);
+        if (!match) throw new DecisionError(`SELECT option ${JSON.stringify(wanted)} was not observed`);
+        decision.selectTarget = match.index;
       }
     }
     return decision;

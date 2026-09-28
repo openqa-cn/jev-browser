@@ -126,7 +126,7 @@ const WAIT_RE = /^Wait(?:\s+(\d+)\s*ms)?$/i;
 const HTTP_RE = /^(GET|POST|PUT|PATCH|DELETE)\s+(\S+)(?:\s+expect\s+(\d+))?$/i;
 const ASSERT_URL = /url\s+(?:contains|includes)\s+['"`]?([^'"`]+)['"`]?/i;
 const ASSERT_URL_EQ = /url\s+(?:equals|is)\s+['"`]?([^'"`]+)['"`]?/i;
-const ASSERT_TEXT = /(?:text|visible(?:\s+text)?)\s+['"]([^'"]+)['"]/i;
+const ASSERT_TEXT = /(?:(?<!hidden\s)text|visible(?:\s+text)?)\s+['"]([^'"]+)['"]/i;
 const ASSERT_HIDDEN = /hidden(?:\s+text)?\s+['"]([^'"]+)['"]/i;
 const ASSERT_TITLE = /title\s+(?:contains|includes)\s+['"]([^'"]+)['"]/i;
 
@@ -259,11 +259,8 @@ export async function loadCases(
       for (const name of readdirSync(abs).sort()) {
         const file = path.join(abs, name);
         if (/\.(ya?ml|md)$/i.test(name) && statSync(file).isFile()) {
-          try {
-            cases.push(...loadOne(file, extra));
-          } catch {
-            /* skip scripts that are not cases */
-          }
+          if (looksLikeDecisionScript(file)) continue;
+          cases.push(...loadOne(file, extra));
         }
       }
       continue;
@@ -272,6 +269,23 @@ export async function loadCases(
   }
   if (!cases.length) throw new Error("No cases loaded. Pass YAML/MD paths or --from-api.");
   return cases;
+}
+
+function looksLikeDecisionScript(file: string): boolean {
+  const suffix = path.extname(file).toLowerCase();
+  if (suffix !== ".yaml" && suffix !== ".yml" && suffix !== ".json") return false;
+  try {
+    const text = readFileSync(file, "utf8");
+    const raw = suffix === ".json" ? JSON.parse(text) : parseYaml(text);
+    if (!Array.isArray(raw) || !raw.length) return false;
+    return raw.every((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return false;
+      const record = item as Record<string, unknown>;
+      return "operation" in record && !("op" in record) && !("steps" in record);
+    });
+  } catch {
+    return false;
+  }
 }
 
 export function loadOne(file: string, extra: Record<string, unknown> = {}): CanonicalCase[] {

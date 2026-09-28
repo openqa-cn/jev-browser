@@ -33,8 +33,12 @@ export class CaseRunner {
     this.httpLast = null;
     let failed = false;
     try {
+      await this.session.alignStart({
+        storageState: caseItem.start.storageState,
+        headers: caseItem.start.headers,
+      });
       if (caseItem.start.url) this.page = await this.session.goto(expandVars(caseItem.start.url, vars));
-      else this.page ??= await this.session.observe();
+      else this.page = await this.session.observe();
       for (const [offset, step] of caseItem.steps.entries()) {
         const index = offset + 1;
         if (failed) {
@@ -173,13 +177,15 @@ async function pause(session: BrowserSession, page: PageState | null, waitMs?: n
   await execute(session, page, undefined, "wait", { waitMs });
 }
 
-function optionValue(element: ObservedElement, wanted?: string): string {
+export function optionValue(element: ObservedElement, wanted?: string): string {
   if (wanted == null) throw new Error("select requires value");
-  for (const option of element.options) {
-    if (option.value === wanted || option.label === wanted || option.label.toLowerCase().includes(wanted.toLowerCase())) {
-      return option.value;
-    }
-  }
+  const exactValue = element.options.find((option) => option.value === wanted);
+  if (exactValue) return exactValue.value;
+  const exactLabel = element.options.find((option) => option.label === wanted);
+  if (exactLabel) return exactLabel.value;
+  const folded = wanted.toLowerCase();
+  const ignoreCase = element.options.find((option) => option.label.toLowerCase() === folded);
+  if (ignoreCase) return ignoreCase.value;
   return wanted;
 }
 
