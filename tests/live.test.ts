@@ -237,12 +237,38 @@ describe("live browser flows", () => {
           start: { url: host },
           steps: [
             { op: "wait", wait_ms: 400 },
+            { op: "assert", visible_text: "iframe 正文证据" },
             { op: "click", target: { role: "button", name: "iframe 确认" } },
             { op: "assert", visible_text: "iframe 已点击" },
           ],
         }),
       );
       expect(result.status).toBe("pass");
+    } finally {
+      await session.close();
+    }
+  });
+
+  it("follows a late popup and reads its text", async () => {
+    const host = path.join(root, "examples/app/popup-host.html");
+    const config = { ...defaultConfig(), headless: true, reportsDir: mkdtempSync(path.join(tmpdir(), "codexqa-jev-browser-popup-")) };
+    const writer = new ReportWriter(config.reportsDir, "popup-1", false);
+    const session = new BrowserSession(config);
+    try {
+      await session.start();
+      const runner = new CaseRunner(session, writer);
+      const result = await runner.runCase(
+        normalizeCase({
+          id: "popup",
+          start: { url: host },
+          steps: [
+            { op: "click", target: { role: "link", name: "打开结果" } },
+            { op: "assert", visible_text: "弹窗证据" },
+          ],
+        }),
+      );
+      expect(result.status).toBe("pass");
+      expect(result.steps[1].actual).toMatchObject({ visible_text: expect.stringContaining("弹窗证据") });
     } finally {
       await session.close();
     }

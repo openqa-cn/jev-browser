@@ -71,10 +71,22 @@ describe("locator and policy", () => {
       ],
     });
     expect(optionValue(element, "10")).toBe("10");
-    expect(optionValue(element, "1")).toBe("1");
+    expect(() => optionValue(element, "1")).toThrow(/not observed/);
+    expect(() => optionValue(element, "")).toThrow(/requires value/);
     expect(optionValue(element, "one way")).toBe("one");
+    const blank = el({
+      index: "4",
+      node: 4,
+      role: "combobox",
+      name: "City",
+      operations: ["SELECT"],
+      options: [{ index: "4:1", label: "请选择", value: "" }],
+    });
+    expect(() => optionValue(blank, "")).toThrow(/requires value/);
     const state = page(element);
     const space = buildSpace(state);
+    const omitted = new ScriptedProvider([{ operation: "SELECT", target: { role: "combobox", name: "Day" } }]);
+    expect(() => omitted.choose(state, "pick", [], space)).toThrow(/not provided/);
     const provider = new ScriptedProvider([{ operation: "SELECT", target: { role: "combobox", name: "Day" }, value: "missing" }]);
     expect(() => provider.choose(state, "pick", [], space)).toThrow(DecisionError);
     const ok = new ScriptedProvider([{ operation: "SELECT", target: { role: "combobox", name: "Day" }, value: "One way" }]);
@@ -217,6 +229,25 @@ describe("locator and policy", () => {
     expect(guarded.clickTargets["44"]).toBeUndefined();
     expect(guarded.clickTargets["45"]).toBeUndefined();
     expect(guarded.clickTargets["70"]).toBeDefined();
+  });
+
+  it("hides a stale click until the page content changes", () => {
+    const space = buildSpace(
+      page(
+        el({ index: "18", node: 18, role: "button", name: "搜索", operations: ["CLICK"] }),
+        el({ index: "7", node: 7, role: "button", name: "10月 1", operations: ["CLICK"] }),
+      ),
+    );
+    const hidden = applyHistoryGuards(space, [{ op: "stale", matched: { index: "18" }, page_changed: false }]);
+    expect(hidden.clickTargets["18"]).toBeUndefined();
+    expect(hidden.clickTargets["7"]).toBeDefined();
+
+    const restored = applyHistoryGuards(space, [
+      { op: "stale", matched: { index: "18" }, page_changed: false },
+      { op: "click", matched: { index: "7" }, page_changed: true },
+    ]);
+    expect(restored.clickTargets["18"]).toBeDefined();
+    expect(restored.clickTargets["7"]).toBeDefined();
   });
 
   it("allows the next chooser TYPE after an option is clicked", () => {

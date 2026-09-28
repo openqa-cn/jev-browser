@@ -1,4 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 import { resolveCloakLaunch, type CloakLaunch } from "./cloak.js";
@@ -14,6 +15,7 @@ export class BrowserSession {
   private browser: Browser | null = null;
   private context: BrowserContext | null = null;
   private recorder: RunScreencast | null = null;
+  private tempProfile?: string;
 
   constructor(
     private config: PilotConfig,
@@ -45,28 +47,52 @@ export class BrowserSession {
     }
   }
 
-  /** Swap cookies and headers when the next case does not share the current start. */
+  /** Rebuild the context from this case's storage file and headers. */
   async alignStart(start: { storageState?: string; headers?: Record<string, string> } = {}): Promise<void> {
-    const storageState = start.storageState;
-    const headers = start.headers;
-    if ((storageState ?? "") === (this.options.storageState ?? "") && sameHeaders(headers, this.options.headers)) return;
-    if (!this.context && !this.browser) return;
-    this.options = { ...this.options, storageState, headers };
+    const next = { storageState: start.storageState, headers: start.headers };
+    const pageOpen = Boolean(this.page && !this.page.isClosed());
+    const same =
+      (next.storageState ?? "") === (this.options.storageState ?? "") && sameHeaders(next.headers, this.options.headers);
+    // A storage file is loaded again for every case, so the previous case cannot leave cookies behind.
+    if (same && pageOpen && !next.storageState) return;
+    const previous = { storageState: this.options.storageState, headers: this.options.headers };
     const headless = this.options.headed ? false : this.config.headless;
-    const cloak = resolveCloakLaunch(this.config);
-    if (cloak) {
-      await this.context?.close().catch(() => undefined);
-      this.context = null;
-      this.browser = null;
-      this.page = null;
-      await this.launchCloak(cloak, headless);
-    } else if (this.browser) {
-      await this.context?.close().catch(() => undefined);
-      await this.openChromiumContext();
+    try {
+      await this.openIsolatedContext(next, headless);
+      this.watchPages();
+      this.page!.setDefaultTimeout(this.config.timeoutMs);
+      if (this.page) await this.recorder?.follow(this.page).catch(() => undefined);
+      if (!headless) await this.revealWindow();
+      this.options = { ...this.options, storageState: next.storageState, headers: next.headers };
+    } catch (error) {
+      this.options = { ...this.options, storageState: previous.storageState, headers: previous.headers };
+      throw error;
     }
-    this.watchPages();
-    this.page!.setDefaultTimeout(this.config.timeoutMs);
-    if (this.page) await this.recorder?.follow(this.page).catch(() => undefined);
+  }
+
+  private async openIsolatedContext(
+    next: { storageState?: string; headers?: Record<string, string> },
+    headless: boolean,
+  ): Promise<void> {
+    const cloak = resolveCloakLaunch(this.config);
+    const previousTemp = this.tempProfile;
+    await this.context?.close().catch(() => undefined);
+    this.context = null;
+    this.page = null;
+    if (cloak) this.browser = null;
+    if (previousTemp) {
+      rmSync(previousTemp, { recursive: true, force: true });
+      this.tempProfile = undefined;
+    }
+    if (cloak) {
+      const userDataDir = next.storageState
+        ? path.join(os.tmpdir(), `codexqa-jev-browser-${process.pid}-${Date.now()}`)
+        : undefined;
+      await this.launchCloak(cloak, headless, { userDataDir, storageState: next.storageState, headers: next.headers });
+      return;
+    }
+    if (!this.browser) this.browser = await this.launchChromium(headless);
+    await this.openChromiumContext(next);
   }
 
   async goto(url: string): Promise<PageState> {
@@ -143,40 +169,41 @@ export class BrowserSession {
     return this.page ? this.page.title() : "";
   }
 
-  private async launchCloak(cloak: CloakLaunch, headless: boolean): Promise<void> {
-    mkdirSync(cloak.userDataDir, { recursive: true });
+  private async launchCloak(
+    cloak: CloakLaunch,
+    headless: boolean,
+    launch: { userDataDir?: string; storageState?: string; headers?: Record<string, string> } = {},
+  ): Promise<void> {
+    const userDataDir = launch.userDataDir ?? cloak.userDataDir;
+    const headers = launch.headers ?? this.options.headers;
+    mkdirSync(userDataDir, { recursive: true });
     this.engine = "cloak";
     const args = headless ? cloak.args : [...cloak.args, "--window-position=-32000,-32000"];
+    const contextOptions = {
+      executablePath: cloak.executablePath,
+      headless,
+      chromiumSandbox: true,
+      args,
+      ignoreDefaultArgs: ["--enable-automation", "--enable-unsafe-swiftshader"],
+      viewport: headless ? { width: this.config.viewportWidth, height: this.config.viewportHeight } : null,
+      extraHTTPHeaders: headers,
+    };
     try {
-      this.context = await chromium.launchPersistentContext(cloak.userDataDir, {
-        executablePath: cloak.executablePath,
-        headless,
-        chromiumSandbox: true,
-        args,
-        ignoreDefaultArgs: ["--enable-automation", "--enable-unsafe-swiftshader"],
-        viewport: headless ? { width: this.config.viewportWidth, height: this.config.viewportHeight } : null,
-        extraHTTPHeaders: this.options.headers,
-      });
+      this.context = await chromium.launchPersistentContext(userDataDir, contextOptions);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (!/user data|profile|Singleton|in use|already in use/i.test(message)) throw error;
-      const fallback = cloak.userDataDir.endsWith("codexqa-jev-browser")
-        ? `${cloak.userDataDir}-${process.pid}`
-        : `${cloak.userDataDir.replace(/\/$/, "")}-codexqa-jev-browser`;
+      const fallback = userDataDir.endsWith("codexqa-jev-browser")
+        ? `${userDataDir}-${process.pid}`
+        : `${userDataDir.replace(/\/$/, "")}-codexqa-jev-browser`;
       mkdirSync(fallback, { recursive: true });
-      this.context = await chromium.launchPersistentContext(fallback, {
-        executablePath: cloak.executablePath,
-        headless,
-        chromiumSandbox: true,
-        args,
-        ignoreDefaultArgs: ["--enable-automation", "--enable-unsafe-swiftshader"],
-        viewport: headless ? { width: this.config.viewportWidth, height: this.config.viewportHeight } : null,
-        extraHTTPHeaders: this.options.headers,
-      });
+      this.context = await chromium.launchPersistentContext(fallback, contextOptions);
+      if (launch.userDataDir) this.tempProfile = fallback;
     }
+    if (launch.userDataDir && !this.tempProfile) this.tempProfile = userDataDir;
     this.browser = this.context.browser();
     this.page = this.context.pages()[0] ?? (await this.context.newPage());
-    await this.applyStorageState();
+    await this.applyStorageState(launch.storageState ?? this.options.storageState);
     console.error(`browser cloak ${cloak.executablePath}`);
   }
 
@@ -232,18 +259,22 @@ export class BrowserSession {
     });
   }
 
-  private async applyStorageState(): Promise<void> {
-    if (!this.context || !this.options.storageState) return;
-    const raw = JSON.parse(readFileSync(this.options.storageState, "utf8")) as { cookies?: Parameters<BrowserContext["addCookies"]>[0] };
+  private async applyStorageState(storageState = this.options.storageState): Promise<void> {
+    if (!this.context || !storageState) return;
+    const raw = JSON.parse(readFileSync(storageState, "utf8")) as {
+      cookies?: Parameters<BrowserContext["addCookies"]>[0];
+    };
     if (raw.cookies?.length) await this.context.addCookies(raw.cookies);
   }
 
-  private async openChromiumContext(): Promise<void> {
+  private async openChromiumContext(overrides?: { storageState?: string; headers?: Record<string, string> }): Promise<void> {
     if (!this.browser) throw new Error("Browser is not started");
+    const storageState = overrides ? overrides.storageState : this.options.storageState;
+    const headers = overrides ? overrides.headers : this.options.headers;
     this.context = await this.browser.newContext({
       viewport: { width: this.config.viewportWidth, height: this.config.viewportHeight },
-      storageState: this.options.storageState,
-      extraHTTPHeaders: this.options.headers,
+      storageState,
+      extraHTTPHeaders: headers,
     });
     this.page = await this.context.newPage();
     this.engine = "chromium";
@@ -272,6 +303,10 @@ export class BrowserSession {
     this.browser = null;
     this.context = null;
     this.page = null;
+    if (this.tempProfile) {
+      rmSync(this.tempProfile, { recursive: true, force: true });
+      this.tempProfile = undefined;
+    }
     if (!recorded || !existsSync(recorded) || statSync(recorded).size < 1000) return [];
     return [recorded];
   }

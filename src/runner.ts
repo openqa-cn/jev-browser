@@ -11,6 +11,7 @@ import { assertStep } from "./verify.js";
 export class CaseRunner {
   page: PageState | null = null;
   httpLast: Record<string, unknown> | null = null;
+  private caseSource = "";
 
   constructor(
     private session: BrowserSession,
@@ -31,6 +32,7 @@ export class CaseRunner {
     const started = Date.now();
     const vars = { ...this.extra };
     this.httpLast = null;
+    this.caseSource = caseItem.source;
     let failed = false;
     try {
       await this.session.alignStart({
@@ -156,7 +158,14 @@ export class CaseRunner {
     if (step.op === "click") await execute(this.session, this.page, element, "click");
     else if (step.op === "type") await execute(this.session, this.page, element, "type", { text: step.value });
     else if (step.op === "select") {
-      await execute(this.session, this.page, element, "select", { optionValue: optionValue(element, step.value) });
+      let picked: string;
+      try {
+        picked = optionValue(element, step.value);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(this.caseSource ? `${message} (${this.caseSource})` : message);
+      }
+      await execute(this.session, this.page, element, "select", { optionValue: picked });
     } else throw new PilotError(`Cannot execute ${step.op}`);
   }
 }
@@ -178,15 +187,15 @@ async function pause(session: BrowserSession, page: PageState | null, waitMs?: n
 }
 
 export function optionValue(element: ObservedElement, wanted?: string): string {
-  if (wanted == null) throw new Error("select requires value");
+  if (wanted == null || wanted === "") throw new Error("select requires value");
   const exactValue = element.options.find((option) => option.value === wanted);
   if (exactValue) return exactValue.value;
   const exactLabel = element.options.find((option) => option.label === wanted);
   if (exactLabel) return exactLabel.value;
   const folded = wanted.toLowerCase();
-  const ignoreCase = element.options.find((option) => option.label.toLowerCase() === folded);
-  if (ignoreCase) return ignoreCase.value;
-  return wanted;
+  const ignoreCase = element.options.filter((option) => option.label.toLowerCase() === folded);
+  if (ignoreCase.length === 1) return ignoreCase[0].value;
+  throw new Error(`select option ${JSON.stringify(wanted)} was not observed`);
 }
 
 export function unusedConfig(_config: PilotConfig): void {

@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import * as modelHttp from "../src/model-http.js";
 import { retrieveKnowledge } from "../src/knowledge.js";
-import { confirmDone, fieldText, guideGoal, planTask, searchQueryFromGoal, typeCandidates } from "../src/policy.js";
-import { assessActionEffect } from "../src/verify.js";
+import { confirmDone, fieldText, guideGoal, planTask, searchQueryFromGoal, textInGoal, typeCandidates } from "../src/policy.js";
+import { assessActionEffect, valueShows } from "../src/verify.js";
 import { defaultConfig } from "../src/config.js";
 
 const sanyaGoal =
@@ -16,6 +16,13 @@ describe("step timing shortcuts", () => {
     expect(searchQueryFromGoal("搜索「AI 新闻」，进入结果。", { role: "textbox", name: "搜索" })).toBe("AI 新闻");
     expect(searchQueryFromGoal(jd, { role: "textbox", name: "出发地 可输入城市或机场" })).toBeUndefined();
     expect(searchQueryFromGoal("出发地填北京，目的地填昆明。", { role: "textbox", name: "搜索" })).toBeUndefined();
+    expect(textInGoal("北京", "填写北京")).toBe(true);
+    expect(textInGoal("京", "填写北京")).toBe(false);
+    expect(textInGoal("1", "去程2026-10-01")).toBe(false);
+    expect(textInGoal("2026", "去程2026-10-01")).toBe(false);
+    expect(textInGoal("携程", "在百度搜索携程，打开携程官网")).toBe(true);
+    expect(textInGoal("打开", "在百度搜索携程，打开携程官网")).toBe(false);
+    expect(textInGoal("官网", "在百度搜索携程，打开携程官网")).toBe(false);
   });
 
   it("lists typeable phrases from the goal for Jev to choose", () => {
@@ -23,6 +30,10 @@ describe("step timing shortcuts", () => {
     expect(typeCandidates(goal)).toEqual(["携程", "北京", "昆明", "2026年10月1日"]);
     const guided = `${goal}\n\nBusiness notes (reference only):\n不要输入「上海」`;
     expect(typeCandidates(guided)).not.toContain("上海");
+    const sanya = "从百度搜索「携程旅行网」并打开携程官网。进入国内机票。选择往返。出发地北京，目的地三亚（不是上海、不是深圳）。去程2026-10-01，返程2026-10-07。";
+    expect(typeCandidates(sanya)).toEqual(["携程旅行网", "北京", "三亚", "2026-10-01", "2026-10-07"]);
+    expect(typeCandidates(sanya)).not.toContain("上海");
+    expect(typeCandidates(sanya)).not.toContain("深圳");
   });
 
   it("attaches matching business notes for the text model", async () => {
@@ -117,6 +128,153 @@ describe("step timing shortcuts", () => {
         },
       }),
     ).toBe("fail");
+    expect(valueShows("1", "10")).toBe(false);
+    expect(valueShows("1", "第 1 项")).toBe(true);
+    expect(
+      assessActionEffect({
+        op: "type",
+        value: "北京",
+        matched: { node: 2, role: "textbox", name: "请选择日期", within: "" },
+        before: {
+          url: "https://example.com",
+          title: "机票",
+          elements: [
+            { index: "1", node: 1, role: "textbox", name: "请选择日期", value: "北京", operations: [], within: "" },
+            { index: "2", node: 2, role: "textbox", name: "请选择日期", value: "", operations: [], within: "" },
+          ],
+        },
+        after: {
+          url: "https://example.com",
+          title: "机票",
+          text: "北京",
+          elements: [
+            { index: "1", node: 1, role: "textbox", name: "请选择日期", value: "北京", operations: [], within: "" },
+            { index: "2", node: 2, role: "textbox", name: "请选择日期", value: "", operations: [], within: "" },
+          ],
+        },
+      }),
+    ).toBe("fail");
+    expect(
+      assessActionEffect({
+        op: "type",
+        value: "secret-value",
+        matched: { node: 1, role: "textbox", name: "密码" },
+        before: {
+          url: "https://example.com/login",
+          title: "登录",
+          elements: [{ index: "1", node: 1, role: "textbox", name: "密码", value: "", filled: false, operations: [], within: "" }],
+        },
+        after: {
+          url: "https://example.com/login",
+          title: "登录",
+          text: "",
+          elements: [{ index: "1", node: 1, role: "textbox", name: "密码", value: "", filled: true, operations: [], within: "" }],
+        },
+      }),
+    ).toBe("pass");
+    expect(
+      assessActionEffect({
+        op: "type",
+        value: "携程",
+        matched: { node: 1, role: "textbox", name: "搜索" },
+        before: {
+          url: "https://www.baidu.com/",
+          title: "百度",
+          marker: "doc-a",
+          elements: [{ index: "1", node: 1, role: "textbox", name: "搜索", value: "", operations: [], within: "" }],
+        },
+        after: {
+          url: "https://www.baidu.com/s?wd=携程",
+          title: "携程_百度搜索",
+          text: "",
+          marker: "doc-b",
+          elements: [{ index: "1", node: 1, role: "link", name: "新闻", value: "", operations: [], within: "" }],
+        },
+      }),
+    ).toBe("pass");
+    expect(
+      assessActionEffect({
+        op: "type",
+        value: "携程",
+        matched: { node: 1, role: "textbox", name: "搜索" },
+        before: {
+          url: "https://www.baidu.com/",
+          title: "百度",
+          marker: "doc-a",
+          elements: [{ index: "1", node: 1, role: "textbox", name: "搜索", value: "", operations: [], within: "" }],
+        },
+        after: {
+          url: "https://www.baidu.com/",
+          title: "百度",
+          text: "",
+          marker: "doc-b",
+          elements: [{ index: "1", node: 1, role: "link", name: "新闻", value: "", operations: [], within: "" }],
+        },
+      }),
+    ).toBe("fail");
+    expect(
+      assessActionEffect({
+        op: "type",
+        value: "北京",
+        matched: { node: 1, role: "textbox", name: "可输入城市" },
+        before: {
+          url: "https://flights.example.com/",
+          title: "机票",
+          marker: "doc-a",
+          elements: [{ index: "1", node: 1, role: "textbox", name: "可输入城市", value: "", operations: ["TYPE"], within: "" }],
+        },
+        after: {
+          url: "https://flights.example.com/",
+          title: "机票",
+          text: "",
+          marker: "doc-a",
+          elements: [
+            { index: "1", node: 1, role: "textbox", name: "北京 可输入城市", value: "北京", operations: ["TYPE"], within: "" },
+          ],
+        },
+      }),
+    ).toBe("pass");
+    expect(
+      assessActionEffect({
+        op: "type",
+        value: "携程",
+        matched: { node: 1, role: "textbox", name: "搜索" },
+        before: {
+          url: "https://www.ctrip.com/",
+          title: "携程旅行网",
+          text: "携程旅行网",
+          marker: "doc-a",
+          elements: [{ index: "1", node: 1, role: "textbox", name: "搜索", value: "", operations: [], within: "" }],
+        },
+        after: {
+          url: "https://www.ctrip.com/error",
+          title: "携程旅行网",
+          text: "携程旅行网",
+          marker: "doc-b",
+          elements: [{ index: "1", node: 1, role: "link", name: "首页", value: "", operations: [], within: "" }],
+        },
+      }),
+    ).toBe("fail");
+    expect(
+      assessActionEffect({
+        op: "type",
+        value: "携程",
+        matched: { node: 1, role: "textbox", name: "搜索" },
+        before: {
+          url: "https://www.baidu.com/",
+          title: "百度",
+          marker: "doc-a",
+          elements: [{ index: "1", node: 1, role: "textbox", name: "搜索", value: "", operations: [], within: "" }],
+        },
+        after: {
+          url: "https://www.baidu.com/s?wd=%E6%90%BA%E7%A8%8B",
+          title: "百度搜索",
+          text: "",
+          marker: "doc-b",
+          elements: [],
+        },
+      }),
+    ).toBe("pass");
   });
 
   it("turns a goal into planned steps and a visible done condition", async () => {

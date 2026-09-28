@@ -70,6 +70,21 @@ describe("jev provider", () => {
     expect(JSON.stringify(body.state)).toContain("时政新闻");
   });
 
+  it("offers the destination city from the goal on every type field", () => {
+    const space = buildSpace(
+      page(
+        el({ index: "1", node: 1, role: "searchbox", name: "搜索", operations: ["TYPE", "CLICK"] }),
+        el({ index: "2", node: 2, role: "textbox", name: "目的地 可输入城市或机场", operations: ["TYPE", "CLICK"] }),
+      ),
+    );
+    const goal = "从百度搜索「携程旅行网」并打开携程官网。出发地北京，目的地三亚（不是上海、不是深圳）。去程2026-10-01。";
+    const body = buildJevRequest(defaultConfig(), { url: "https://flights.ctrip.com/", title: "机票" }, goal, [], space);
+    const questions = body.questions as Record<string, { criteria: Record<string, string> }>;
+    expect(Object.keys(questions.text_1.criteria)).toEqual(["携程旅行网", "北京", "三亚", "2026-10-01"]);
+    expect(Object.keys(questions.text_2.criteria)).toEqual(Object.keys(questions.text_1.criteria));
+    expect(Object.keys(questions.text_2.criteria)).not.toContain("上海");
+  });
+
   it("asks Jev whether the action took effect", async () => {
     vi.spyOn(modelHttp, "modelFetch").mockImplementation(async (_url, init) => {
       const body = JSON.parse(String(init?.body)) as { questions: { verdict: { criteria: Record<string, string> } } };

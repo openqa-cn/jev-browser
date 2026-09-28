@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { stringify as stringifyYaml } from "yaml";
 import type { CanonicalCase, CaseResult, Step, Target } from "./types.js";
-import { resolveStartUrl, slug } from "./util.js";
+import { isSecretControl, resolveStartUrl, slug } from "./util.js";
 
 export function compileCase(
   result: CaseResult,
@@ -13,7 +13,8 @@ export function compileCase(
   const steps: Step[] = [];
   let lastUrl = resolveStartUrl(startUrl) ?? startUrl;
   for (const item of result.steps) {
-    if (item.status === "skip" || item.status === "blocked" || item.status === "fail") continue;
+    if (item.status === "skip" || item.status === "blocked") continue;
+    if (item.status === "fail" && !item.pageChanged) continue;
     if (["wait", "decide", "stale", "done", "blocked"].includes(item.op)) {
       if (item.op === "done" && item.title && !steps.some((step) => step.titleIncludes === item.title)) {
         steps.push({ op: "assert", titleIncludes: item.title });
@@ -27,7 +28,9 @@ export function compileCase(
         target,
         waitMs: item.url && pageKey(item.url) !== pageKey(lastUrl) ? 2000 : undefined,
       });
-    } else if (item.op === "type" && target) steps.push({ op: "type", target, value: item.value });
+    } else if (item.op === "type" && target) {
+      steps.push({ op: "type", target, value: isSecretControl(target.name) ? "${PASSWORD}" : item.value });
+    }
     else if (item.op === "select" && target) steps.push({ op: "select", target, value: item.value });
     else if (item.op === "scroll_up" || item.op === "scroll_down") steps.push({ op: item.op });
     else if (item.op === "scroll") steps.push({ op: "scroll_down" });
@@ -126,10 +129,18 @@ function urlHint(current: string, previous: string): string {
   return current;
 }
 
+function withinClause(step: Step): string {
+  return step.target?.within ? ` within "${step.target.within}"` : "";
+}
+
 function mdStep(step: Step): string {
-  if (step.op === "type" && step.target) return `Type "${step.value ?? ""}" into ${step.target.role ?? "textbox"} "${step.target.name ?? ""}"`;
-  if (step.op === "click" && step.target) return `Click ${step.target.role ?? "button"} "${step.target.name ?? ""}"`;
-  if (step.op === "select" && step.target) return `Select "${step.value ?? ""}" in ${step.target.role ?? "combobox"} "${step.target.name ?? ""}"`;
+  if (step.op === "type" && step.target) {
+    return `Type "${step.value ?? ""}" into ${step.target.role ?? "textbox"} "${step.target.name ?? ""}"${withinClause(step)}`;
+  }
+  if (step.op === "click" && step.target) return `Click ${step.target.role ?? "button"} "${step.target.name ?? ""}"${withinClause(step)}`;
+  if (step.op === "select" && step.target) {
+    return `Select "${step.value ?? ""}" in ${step.target.role ?? "combobox"} "${step.target.name ?? ""}"${withinClause(step)}`;
+  }
   if (step.op === "assert") {
     const parts = [];
     if (step.urlIncludes) parts.push(`url contains \`${step.urlIncludes}\``);

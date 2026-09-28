@@ -62,6 +62,42 @@ describe("compiler and report", () => {
     );
     expect(compiled.steps.some((step) => step.op === "scroll_up")).toBe(true);
     expect(compiled.steps.some((step) => step.op === "click")).toBe(false);
+    const kept = compileCase(
+      {
+        id: "secret",
+        name: "login",
+        source: "auto",
+        status: "pass",
+        durationMs: 1,
+        steps: [
+          {
+            index: 2,
+            op: "type",
+            status: "pass",
+            value: "super-secret",
+            pageChanged: true,
+            durationMs: 1,
+            matched: { role: "textbox", name: "密码", within: "登录" },
+          },
+          {
+            index: 3,
+            op: "click",
+            status: "fail",
+            pageChanged: true,
+            durationMs: 1,
+            url: "https://example.com/app",
+            matched: { role: "button", name: "进入", within: "登录" },
+          },
+        ],
+      },
+      "https://example.com/login",
+    );
+    expect(kept.steps.find((step) => step.op === "type")?.value).toBe("${PASSWORD}");
+    expect(kept.steps.some((step) => step.op === "click")).toBe(true);
+    const markdown = writeCase(kept, path.join(mkdtempSync(path.join(tmpdir(), "codexqa-jev-browser-md-")), "out.yaml"), true);
+    const md = require("node:fs").readFileSync(markdown[1], "utf8") as string;
+    expect(md).toContain('within "登录"');
+    expect(md).not.toContain("super-secret");
     const dest = path.join(mkdtempSync(path.join(tmpdir(), "codexqa-jev-browser-")), "out.yaml");
     const written = writeCase(compiled, dest, true);
     expect(written[1].endsWith(".md")).toBe(true);

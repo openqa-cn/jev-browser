@@ -140,15 +140,20 @@ export async function explore(
     if (status === "fail") break;
   }
   result.durationMs = Date.now() - started;
+  const skipped = result.steps.some((step) => step.status === "skip");
+  const failed = result.steps.some((step) => step.status === "fail");
   const acted = result.steps.filter((step) => step.status !== "skip");
-  result.status = !acted.length
+  result.status = !result.steps.length || !acted.length
     ? "blocked"
-    : acted.every((step) => step.status === "pass")
-      ? "pass"
-      : acted.some((step) => step.status === "fail")
-        ? "fail"
-        : "blocked";
+    : failed
+      ? "fail"
+      : skipped
+        ? "blocked"
+        : acted.every((step) => step.status === "pass")
+          ? "pass"
+          : "blocked";
   if (!result.steps.length) result.error = "no safe controls to explore";
+  else if (skipped && result.status === "blocked" && !failed) result.error = "some controls were skipped";
   const compiled = result.steps.length
     ? [compileCase(result, url, `Explored path from ${url}`, "explore-path")]
     : [];

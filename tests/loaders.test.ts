@@ -101,7 +101,7 @@ describe("case loaders", () => {
     expect(loaded.map((item) => item.id)).toEqual(["ok"]);
 
     writeFileSync(path.join(dir, "bad.yaml"), "id: bad\nsteps:\n  - op: nope\n");
-    await expect(loadCases([dir], { config: defaultConfig() })).rejects.toThrow(/Unknown op/);
+    await expect(loadCases([dir], { config: defaultConfig() })).rejects.toThrow(/bad\.yaml[\s\S]*Unknown op/);
   });
 
   it("rejects case URLs that are not http or https", async () => {

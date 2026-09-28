@@ -120,7 +120,7 @@ function loadPlan(file: string, raw: Record<string, unknown>, extra: Record<stri
 
 const TYPE_RE = /^Type\s+"([^"]*)"\s+into\s+(\w+)\s+"([^"]*)"(?:\s+within\s+"([^"]*)")?$/i;
 const CLICK_RE = /^Click\s+(\w+)\s+"([^"]*)"(?:\s+within\s+"([^"]*)")?$/i;
-const SELECT_RE = /^Select\s+"([^"]*)"\s+in\s+(\w+)\s+"([^"]*)"$/i;
+const SELECT_RE = /^Select\s+"([^"]*)"\s+in\s+(\w+)\s+"([^"]*)"(?:\s+within\s+"([^"]*)")?$/i;
 const SCROLL_RE = /^Scroll\s+(up|down)$/i;
 const WAIT_RE = /^Wait(?:\s+(\d+)\s*ms)?$/i;
 const HTTP_RE = /^(GET|POST|PUT|PATCH|DELETE)\s+(\S+)(?:\s+expect\s+(\d+))?$/i;
@@ -183,7 +183,7 @@ export function parseMdStep(text: string): Step {
     return { op: "click", target: { role: match[1], name: match[2], within: match[3] } };
   }
   if ((match = SELECT_RE.exec(text))) {
-    return { op: "select", value: match[1], target: { role: match[2], name: match[3] } };
+    return { op: "select", value: match[1], target: { role: match[2], name: match[3], within: match[4] } };
   }
   if ((match = SCROLL_RE.exec(text))) return { op: `scroll_${match[1].toLowerCase()}` };
   if ((match = WAIT_RE.exec(text))) return { op: "wait", waitMs: match[1] ? Number(match[1]) : 100 };
@@ -260,7 +260,12 @@ export async function loadCases(
         const file = path.join(abs, name);
         if (/\.(ya?ml|md)$/i.test(name) && statSync(file).isFile()) {
           if (looksLikeDecisionScript(file)) continue;
-          cases.push(...loadOne(file, extra));
+          try {
+            cases.push(...loadOne(file, extra));
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            throw new Error(`${file}: ${message}`);
+          }
         }
       }
       continue;

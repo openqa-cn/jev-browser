@@ -120,12 +120,14 @@ export function buildJevRequest(
         operations: item.operations,
       })),
       recent_actions: history.slice(-10).map((item) => {
-        const name = (item.matched as { name?: string } | undefined)?.name;
+        const matched = item.matched as { index?: string; name?: string } | undefined;
+        const name = matched?.name;
         return {
           action: item.action,
           op: item.op,
           text: isSecretControl(name) ? undefined : item.text,
           page_changed: item.page_changed,
+          index: matched?.index,
           name,
         };
       }),

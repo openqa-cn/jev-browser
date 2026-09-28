@@ -29,6 +29,7 @@ export function fromRaw(raw: Record<string, unknown>): PageState {
     ...item,
     name: item.name ?? "",
     value: publicValue(item.name, item.value),
+    filled: item.filled === true ? true : undefined,
     operations: item.operations ?? [],
     within: item.within ?? "",
     nearby: item.nearby ?? "",
@@ -57,7 +58,7 @@ export function fromRaw(raw: Record<string, unknown>): PageState {
 
 export function contentKey(page: Pick<PageState, "url" | "title" | "elements">): string {
   const controls = page.elements
-    .map((item) => `${item.role}|${item.name}|${item.value}|${item.operations.join(",")}`)
+    .map((item) => `${item.role}|${item.name}|${item.value}|${item.filled ? "1" : "0"}|${item.operations.join(",")}`)
     .sort();
   return stableHash({ url: page.url, title: page.title, controls });
 }
@@ -66,11 +67,14 @@ export function controlSnapshot(page: PageState): ControlSnapshot {
   return {
     url: page.url,
     title: page.title,
+    marker: page.marker,
     elements: page.elements.map((item) => ({
       index: item.index,
+      node: item.node,
       role: item.role,
       name: item.name,
       value: publicValue(item.name, item.value),
+      filled: item.filled === true ? true : undefined,
       operations: item.operations,
       within: item.within,
     })),
@@ -172,9 +176,11 @@ function shortHref(href: string): string {
 export function asCandidate(item: ObservedElement): Record<string, unknown> {
   return {
     index: item.index,
+    node: item.node,
     role: item.role,
     name: item.name,
     value: publicValue(item.name, item.value),
+    filled: item.filled === true ? true : undefined,
     within: item.within,
     operations: item.operations,
   };

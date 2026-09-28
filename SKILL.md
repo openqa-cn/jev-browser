@@ -81,6 +81,8 @@ Per-app notes live in `knowledge/<app>/*.md`. On live `auto` / `generate --goal`
 
 Notes are reference for what to type and which visible control to prefer. They do not add operations. Do not copy them into case YAML. Add a new app by adding a note. Do not put that app's fill rules back into `src/policy.ts`.
 
+A failed `auto` or `generate` writes `reports/<run-id>/knowledge-draft.md` when the failed step names a control. The draft is not active until a person runs `npx codexqa-jev-browser knowledge-accept <draft>`. That copies it into `knowledge/<app>/`. Do not accept a draft that names a secret or invents a selector.
+
 ## Case sources
 
 - YAML is the source of truth. Markdown uses numbered Click/Type/Select/Scroll/Wait/Assert/HTTP lines.

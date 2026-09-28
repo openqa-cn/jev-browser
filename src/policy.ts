@@ -129,6 +129,7 @@ export class ScriptedProvider implements DecisionProvider {
       if (decision.operation === "TYPE") decision.typeTarget = element.index;
       if (decision.operation === "SELECT") {
         const wanted = String(item.value ?? decision.text ?? "");
+        if (!wanted) throw new DecisionError("SELECT option was not provided");
         const match = element.options.find((option) => option.value === wanted || option.label === wanted);
         if (!match) throw new DecisionError(`SELECT option ${JSON.stringify(wanted)} was not observed`);
         decision.selectTarget = match.index;
@@ -398,6 +399,18 @@ export function applyHistoryGuards(space: ActionSpace, history: Record<string, u
     }
   }
 
+  const staleClicks = new Set<string>();
+  for (const item of recent) {
+    if (item.page_changed === true) {
+      staleClicks.clear();
+      continue;
+    }
+    if (item.op !== "stale") continue;
+    const index = (item.matched as { index?: string } | undefined)?.index;
+    if (index) staleClicks.add(index);
+  }
+  for (const index of staleClicks) delete clickTargets[index];
+
   for (const index of blockedType) delete typeTargets[index];
   const operations = space.operations.filter((name) => {
     if (name === "TYPE") return Object.keys(typeTargets).length > 0;
@@ -465,8 +478,25 @@ export function typeCandidates(goal: string): string[] {
   for (const match of source.matchAll(/(?:搜索|输入|填写|填)(?!框|按钮|结果)\s*([^，。；！？\n]{1,80})/g)) {
     add(match[1].split(/\s*(?:并|然后|进入|打开|不要|断言)/)[0]);
   }
+  for (const match of source.matchAll(/(?:出发地|出发城市|目的地|目的城市)(?:是|为|填)?\s*([^，。；！？（(、不是]{1,12})/g)) {
+    add(match[1]);
+  }
   for (const match of source.matchAll(/20\d{2}年\d{1,2}月\d{1,2}日|20\d{2}-\d{2}-\d{2}/g)) add(match[0]);
   return found.slice(0, 12);
+}
+
+/** True when the characters already occur in the goal, before planned steps or notes. */
+export function textInGoal(text: string, goal: string): boolean {
+  const wanted = text.replace(/\s+/g, "");
+  if (!wanted || wanted.length < 2 || wanted.length > 80 || /^\d{1,2}$/.test(wanted)) return false;
+  const pieces = typeCandidates(goal).map((item) => item.replace(/\s+/g, "")).filter(Boolean);
+  if (pieces.length) return pieces.includes(wanted);
+  const source = goal.split(/\n\s*Planned steps:/)[0].split(/\n\s*Business notes/)[0];
+  const tokens = source
+    .split(/[\s，。；！？,、\n]+/)
+    .map((item) => item.replace(/\s+/g, ""))
+    .filter((item) => item.length >= 2);
+  return tokens.includes(wanted);
 }
 
 /** Characters already named in the goal for a search box. Other fields still use the text model. */

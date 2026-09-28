@@ -9,6 +9,7 @@ import { loadCases, readPlanTitle } from "./cases.js";
 import { applyCliOverrides, loadConfig, loadEnv } from "./config.js";
 import { explore } from "./explore.js";
 import { compileCase, writeCase } from "./generate.js";
+import { acceptKnowledgeDraft, draftKnowledgeNote } from "./knowledge-draft.js";
 import { decisionModelLabel } from "./jev.js";
 import { pageTable } from "./observe/snapshot.js";
 import { emptyReport, failedCount, passRate, ReportWriter } from "./report.js";
@@ -54,6 +55,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   if (command === "auto") return cmdAuto(argv, config, screenshots, headed);
   if (command === "generate") return cmdGenerate(argv, config, screenshots, headed);
   if (command === "explore") return cmdExplore(argv, config, screenshots, headed);
+  if (command === "knowledge-accept") return cmdAcceptKnowledge(rest[0]);
   console.error(`Unknown command: ${command}`);
   printHelp();
   return 2;
@@ -69,6 +71,7 @@ Commands:
   auto --url --goal             Goal-driven automation
   generate --url --goal         Compile YAML (and optional MD) from a run
   explore --url                 Coverage-oriented crawl
+  knowledge-accept <draft>     Copy a failed-run knowledge draft into knowledge/
 
 Global flags:
   --headed                      Show the browser window (already the default)
@@ -236,6 +239,7 @@ async function cmdAuto(argv: string[], config: PilotConfig, screenshots: boolean
   } finally {
     await keepRecording(session, writer, report);
   }
+  maybeDraftKnowledge(report, writer);
   return finish(writer, report);
 }
 
@@ -292,6 +296,7 @@ async function cmdGenerate(argv: string[], config: PilotConfig, screenshots: boo
   } finally {
     await keepRecording(session, writer, report);
   }
+  maybeDraftKnowledge(report, writer);
   finish(writer, report);
   persist(result);
   console.log("wrote", out);
@@ -367,6 +372,31 @@ function collectRepeat(argv: string[], name: string): string[] {
     if (item === name && argv[index + 1]) values.push(argv[index + 1]);
   });
   return values;
+}
+
+function cmdAcceptKnowledge(file: string | undefined): number {
+  if (!file) {
+    console.error("knowledge-accept needs a draft file");
+    return 2;
+  }
+  const dest = acceptKnowledgeDraft(file);
+  console.log(`knowledge ${dest}`);
+  return 0;
+}
+
+function maybeDraftKnowledge(report: SuiteReport, writer: ReportWriter): void {
+  const failed = report.cases.find((item) => item.status !== "pass");
+  if (!failed) return;
+  const note = draftKnowledgeNote({
+    url: report.startUrl ?? failed.steps.at(-1)?.url,
+    goal: failed.goal,
+    steps: failed.steps,
+  });
+  if (!note) return;
+  const dest = path.join(writer.root, "knowledge-draft.md");
+  writeFileSync(dest, note);
+  console.log(`knowledge draft ${dest}`);
+  console.log(`confirm with: npx codexqa-jev-browser knowledge-accept ${dest}`);
 }
 
 function finish(writer: ReportWriter, report: SuiteReport): number {

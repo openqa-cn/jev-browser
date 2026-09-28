@@ -229,6 +229,9 @@
       const opt = el.selectedOptions?.[0];
       return (opt?.label || opt?.text || el.value || "").trim();
     }
+    if (el.isContentEditable) {
+      return String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 200);
+    }
     return String(el.value ?? el.getAttribute("aria-valuetext") ?? "").slice(0, 200);
   };
 
@@ -448,12 +451,15 @@
     const operations = chooser || card || press ? ["CLICK"] : operationsOf(el, role);
     if (!name && !chooser && !operations.includes("TYPE") && !operations.includes("SELECT")) continue;
     const id = nodeId(el);
+    const rawValue = valueOf(el, role);
+    const secret = !chooser && secretControl(el, name);
     const item = {
       index: String(elements.length + 1),
       node: id,
       role,
       name,
-      value: chooser || secretControl(el, name) ? "" : valueOf(el, role),
+      value: chooser || secret ? "" : rawValue,
+      filled: secret ? Boolean(String(rawValue).trim()) : undefined,
       operations,
       checked: el.checked ?? null,
       selected: el.selected ?? null,
@@ -477,16 +483,29 @@
     if (elements.length >= MAX) break;
   }
 
-  const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT);
   const parts = [];
-  let node;
-  while ((node = walker.nextNode())) {
-    const parent = node.parentElement;
-    if (!parent || parent.closest("script,style,noscript,footer")) continue;
-    if (!isVisible(parent)) continue;
-    const text = node.textContent.replace(/\s+/g, " ").trim();
-    if (text) parts.push(text);
+  const collectText = (doc) => {
+    const root = doc.body || doc.documentElement;
+    if (!root) return;
+    const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const parent = node.parentElement;
+      if (!parent || parent.closest("script,style,noscript,footer")) continue;
+      if (!isVisible(parent)) continue;
+      const text = node.textContent.replace(/\s+/g, " ").trim();
+      if (text) parts.push(text);
+      if (parts.join(" ").length > 4000) return;
+    }
+  };
+  collectText(document);
+  for (const iframe of document.querySelectorAll("iframe")) {
     if (parts.join(" ").length > 4000) break;
+    try {
+      if (iframe.contentDocument) collectText(iframe.contentDocument);
+    } catch {
+      /* cross-origin */
+    }
   }
 
   const pageKey = location.href + "|" + document.title;

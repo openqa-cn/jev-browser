@@ -6,7 +6,7 @@ import { DecisionError, EmptyField, StalePage } from "./errors.js";
 import { actionMarkLabel, asCandidate, contentKey, controlSnapshot, elementLabel } from "./observe/snapshot.js";
 import { JevProvider, createDecisionProvider, decisionModelLabel, jevAssert, jevConfirmDone } from "./jev.js";
 import { retrieveKnowledge } from "./knowledge.js";
-import { applyHistoryGuards, buildSpace, confirmDone, decide, fieldText, guideGoal, planTask, resolveDecision, ScriptedProvider, searchQueryFromGoal, selectedIndex, type DecisionProvider } from "./policy.js";
+import { applyHistoryGuards, buildSpace, confirmDone, decide, fieldText, guideGoal, OpenAIProvider, planTask, resolveDecision, ScriptedProvider, searchQueryFromGoal, selectedIndex, textInGoal, type DecisionProvider } from "./policy.js";
 import { emptyCase, ReportWriter } from "./report.js";
 import { assessActionEffect } from "./verify.js";
 import type { CaseResult, ControlSnapshot, Decision, ModelUsage, PageState, PilotConfig, StepResult, TaskPlan } from "./types.js";
@@ -218,6 +218,7 @@ export class Agent {
             decision,
             value: acted.item.text as string | undefined,
             matched: acted.item.matched as Record<string, unknown> | undefined,
+            pageChanged: acted.item.page_changed === true,
             durationMs: elapsedMs(stepStarted),
             observeMs,
             observed,
@@ -270,9 +271,18 @@ export class Agent {
       } catch (err) {
         if (err instanceof StalePage) {
           page = await this.session.observe();
+          const index = selectedIndex(decision);
+          history.push({
+            op: "stale",
+            matched: index ? { index } : undefined,
+            page_changed: false,
+          });
+          this.predictedContent = "";
+          sameContentSkips = 0;
           result.steps.push(
             await this.record(caseId, stepIndex, "stale", page, {
               decision,
+              matched: index ? { index } : undefined,
               status: "skip",
               error: "stale page, observed again",
               durationMs: elapsedMs(stepStarted),
@@ -400,7 +410,7 @@ export class Agent {
       if (this.pendingText?.context === key) {
         text = this.pendingText.text;
         ({ textMs, textModel, textUsage, textThought } = readTextHelper(this.pendingText.helper));
-      } else if (decision.text) {
+      } else if (decision.text && (!(this.provider instanceof OpenAIProvider) || textInGoal(decision.text, goal))) {
         text = decision.text;
         textMs = 0;
         textModel = "decision";
@@ -412,27 +422,31 @@ export class Agent {
           textModel = "goal";
         }
       }
-      if (text == null) {
+      if (text == null && this.provider instanceof OpenAIProvider) {
         try {
           const filled = await fieldText(context, this.config);
-          text = filled.text;
-          ({ textMs, textModel, textUsage, textThought } = readTextHelper(filled.helper));
-          this.pendingText = { context: key, text, helper: filled.helper };
+          if (textInGoal(filled.text, goal)) {
+            text = filled.text;
+            ({ textMs, textModel, textUsage, textThought } = readTextHelper(filled.helper));
+            this.pendingText = { context: key, text, helper: filled.helper };
+          }
         } catch (err) {
           if (!(err instanceof EmptyField)) throw err;
-          return {
-            page,
-            skippedEmpty: true,
-            item: {
-              op: "type",
-              action: elementLabel(element),
-              text: "",
-              page_changed: false,
-              matched: asCandidate(element),
-              operation: decision.operation,
-            },
-          };
         }
+      }
+      if (text == null) {
+        return {
+          page,
+          skippedEmpty: true,
+          item: {
+            op: "type",
+            action: elementLabel(element),
+            text: "",
+            page_changed: false,
+            matched: asCandidate(element),
+            operation: decision.operation,
+          },
+        };
       }
     }
     const opts = {
@@ -479,7 +493,9 @@ export class Agent {
               ? "scroll_down"
               : kind,
         action: element ? elementLabel(element) : decision.operation,
-        text,
+        text: decision.operation === "SELECT"
+          ? element?.options.find((option) => option.value === optionValue)?.label || optionValue
+          : isSecretControl(element?.name) ? undefined : text,
         page_changed: contentKey(next) !== beforeKey,
         matched: element ? asCandidate(element) : undefined,
         operation: decision.operation,
@@ -496,6 +512,7 @@ export class Agent {
       decision?: Decision;
       value?: string;
       matched?: Record<string, unknown>;
+      pageChanged?: boolean;
       status?: string;
       error?: string;
       durationMs?: number;
@@ -537,9 +554,10 @@ export class Agent {
       }
       screenshotMs = elapsedMs(shotStarted);
     }
+    const secret = isSecretControl(String(extra.matched?.name ?? ""));
     const shouldAssert = extra.observeAfterMs != null && (extra.status ?? "pass") === "pass";
     const judged =
-      shouldAssert && this.provider instanceof JevProvider
+      shouldAssert && !secret && this.provider instanceof JevProvider
         ? await jevAssert(this.config, {
             op,
             value: extra.value,
@@ -555,6 +573,7 @@ export class Agent {
             value: extra.value,
             before: extra.observed,
             after: page,
+            matched: extra.matched as { node?: number; role?: string; name?: string; within?: string } | undefined,
           })
         : undefined);
     const failedEffect = (extra.status ?? "pass") === "pass" && verdict === "fail";
@@ -567,6 +586,7 @@ export class Agent {
       url: page.url,
       title: page.title,
       matched: extra.matched,
+      pageChanged: extra.pageChanged,
       error: failedEffect ? "action had no visible effect" : extra.error,
       screenshot,
       durationMs: (extra.durationMs ?? 0) + (extra.screenshotIncluded ? 0 : (screenshotMs ?? 0)),

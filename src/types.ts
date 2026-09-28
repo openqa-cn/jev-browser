@@ -57,6 +57,8 @@ export interface ObservedElement {
   role: string;
   name: string;
   value: string;
+  /** Secret controls only: the field has a value, without the value itself. */
+  filled?: boolean;
   operations: string[];
   checked?: boolean | null;
   selected?: boolean | null;
@@ -70,9 +72,11 @@ export interface ObservedElement {
 
 export interface ControlNode {
   index: string;
+  node?: number;
   role: string;
   name: string;
   value: string;
+  filled?: boolean;
   operations: string[];
   within: string;
 }
@@ -80,6 +84,7 @@ export interface ControlNode {
 export interface ControlSnapshot {
   url: string;
   title: string;
+  marker?: string;
   elements: ControlNode[];
 }
 
@@ -136,6 +141,8 @@ export interface StepResult {
   modelThought?: string;
   textThought?: string;
   matched?: Record<string, unknown>;
+  /** The action changed the observed page, even if a later effect check failed. */
+  pageChanged?: boolean;
   candidates?: Record<string, unknown>[];
   expected?: Record<string, unknown>;
   actual?: Record<string, unknown>;
