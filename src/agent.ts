@@ -6,7 +6,7 @@ import { DecisionError, EmptyField, StalePage } from "./errors.js";
 import { actionMarkLabel, asCandidate, contentKey, controlSnapshot, elementLabel } from "./observe/snapshot.js";
 import { JevProvider, createDecisionProvider, decisionModelLabel, jevAssert, jevConfirmDone } from "./jev.js";
 import { retrieveKnowledge } from "./knowledge.js";
-import { applyHistoryGuards, buildSpace, confirmDone, decide, fieldText, guideGoal, OpenAIProvider, planTask, resolveDecision, ScriptedProvider, searchQueryFromGoal, selectedIndex, textInGoal, type DecisionProvider } from "./policy.js";
+import { applyHistoryGuards, buildSpace, confirmDone, decide, fieldText, goalAsksForFacts, guideGoal, hasPendingReads, OpenAIProvider, planTask, resolveDecision, ScriptedProvider, searchQueryFromGoal, selectedIndex, textInGoal, type DecisionProvider } from "./policy.js";
 import { emptyCase, ReportWriter } from "./report.js";
 import { assessActionEffect } from "./verify.js";
 import type { CaseResult, ControlSnapshot, Decision, ModelUsage, PageState, PilotConfig, StepResult, TaskPlan } from "./types.js";
@@ -18,7 +18,7 @@ export function finishAutoStatus(
   maxSteps: number,
   error?: string,
 ): { status: string; error?: string } {
-  const finished = steps.some((step) => step.op === "done" && step.status === "pass");
+  const finished = steps.some((step) => (step.op === "done" || step.op === "read") && step.status === "pass");
   if (status !== "pass" || finished) return { status, error };
   const failed = [...steps].reverse().find((step) => step.status === "fail");
   if (failed) return { status: "fail", error: error || failed.error || "action had no visible effect" };
@@ -38,6 +38,7 @@ export class Agent {
   private knowledge = "";
   private prepared?: TaskPlan;
   private predictedContent = "";
+  private taskGoal = "";
 
   constructor(
     private session: BrowserSession,
@@ -67,6 +68,7 @@ export class Agent {
       this.provider instanceof ScriptedProvider ? undefined : (this.prepared ?? (await planTask(goal, this.config, this.knowledge)));
     const guidedGoal = guideGoal(goal, plan, this.knowledge);
     const history: Record<string, unknown>[] = [];
+    this.taskGoal = goal;
     const result = emptyCase({ id: caseId, name: goal.slice(0, 80) || caseId, source: "auto", goal, plan });
     const opening = this.session.url && this.session.url !== "about:blank" ? this.session.observe() : this.session.goto(url);
     let page = await opening;
@@ -76,6 +78,9 @@ export class Agent {
     let emptyFieldSkips = 0;
     let staleRetries = 0;
     let waitRetries = 0;
+    let readHolds = 0;
+    let readMisses = 0;
+    let readPrompts = 0;
     let status = "pass";
     let error: string | undefined;
     result.steps.push(
@@ -89,22 +94,24 @@ export class Agent {
     hooks.onStep?.(result);
     for (let stepIndex = 2; stepIndex <= this.config.maxSteps; stepIndex += 1) {
       const key = contentKey(page);
-      if (this.predictedContent === key) {
+      const reread = goalAsksForFacts(goal) && readPrompts < 8 && hasPendingReads(page, history);
+      if (this.predictedContent === key && !reread) {
         sameContentSkips += 1;
         if (sameContentSkips >= 3) {
-          if (await this.passIfDoneVisible(caseId, stepIndex, page, result, hooks)) {
+          if (await this.finishStablePage(caseId, stepIndex, page, result, hooks)) {
             status = "pass";
             error = undefined;
             break;
           }
           status = "blocked";
-          error = "page did not change after 3 actions";
+          error = goalAsksForFacts(goal) ? "stopped before the page facts were recorded" : "page did not change after 3 actions";
           break;
         }
         await settle(this.session);
         page = await this.session.observe();
         continue;
       }
+      if (reread && this.predictedContent === key) readPrompts += 1;
       sameContentSkips = 0;
       this.predictedContent = key;
       const stepStarted = performance.now();
@@ -137,6 +144,32 @@ export class Agent {
       const model = decision.model ?? decisionModelLabel(this.config);
       const modelUsage = decision.modelUsage ?? undefined;
       if (decision.operation === "DONE") {
+        if (goalAsksForFacts(goal) && !result.steps.some((step) => step.op === "read" && step.status === "pass")) {
+          history.push({ op: "read", text: "", page_changed: false });
+          this.predictedContent = "";
+          sameContentSkips = 0;
+          readHolds += 1;
+          result.steps.push(
+            await this.record(caseId, stepIndex, "done", page, {
+              decision,
+              status: "skip",
+              error: "read the visible facts before finishing",
+              durationMs: elapsedMs(stepStarted),
+              observeMs,
+              observed,
+              modelMs,
+              model,
+              modelUsage,
+            }),
+          );
+          hooks.onStep?.(result);
+          if (readHolds >= 3) {
+            status = "blocked";
+            error = "stopped before the page facts were recorded";
+            break;
+          }
+          continue;
+        }
         const doneWhen = result.plan?.doneWhen;
         const checked = doneWhen ? await this.checkDone(page, doneWhen) : { met: true };
         const met = checked.met;
@@ -181,6 +214,46 @@ export class Agent {
         );
         hooks.onStep?.(result);
         break;
+      }
+      if (decision.operation === "READ") {
+        const element = decision.readTarget ? page.elements.find((item) => item.index === decision.readTarget) : undefined;
+        const text = element?.name.trim() ?? "";
+        const recorded = Boolean(element && text);
+        history.push({
+          op: "read",
+          text,
+          page_changed: false,
+          matched: element ? { index: element.index, role: element.role, name: element.name } : undefined,
+        });
+        this.predictedContent = "";
+        sameContentSkips = 0;
+        result.steps.push(
+          await this.record(caseId, stepIndex, "read", page, {
+            decision,
+            value: text,
+            matched: element ? { index: element.index, role: element.role, name: element.name } : undefined,
+            status: recorded ? "pass" : "skip",
+            error: recorded ? undefined : "read target is not on the page",
+            durationMs: elapsedMs(stepStarted),
+            observeMs,
+            observed,
+            modelMs,
+            model,
+            modelUsage,
+          }),
+        );
+        hooks.onStep?.(result);
+        if (!recorded) {
+          readMisses += 1;
+          if (readMisses >= 3) {
+            status = "blocked";
+            error = "stopped before the page facts were recorded";
+            break;
+          }
+        } else {
+          readMisses = 0;
+        }
+        continue;
       }
       try {
         const acted = await this.act(page, goal, decision, history);
@@ -243,13 +316,13 @@ export class Agent {
         if (acted.item.op === "wait") {
           waitRetries += 1;
           if (waitRetries >= 3) {
-            if (await this.passIfDoneVisible(caseId, stepIndex, page, result, hooks)) {
+            if (await this.finishStablePage(caseId, stepIndex, page, result, hooks)) {
               status = "pass";
               error = undefined;
               break;
             }
             status = "blocked";
-            error = "stopped after 3 waits";
+            error = goalAsksForFacts(goal) ? "stopped before the page facts were recorded" : "stopped after 3 waits";
             break;
           }
         } else {
@@ -259,13 +332,13 @@ export class Agent {
         if (acted.item.page_changed === false && acted.item.op !== "wait") unchanged += 1;
         else unchanged = 0;
         if (unchanged >= 3) {
-          if (await this.passIfDoneVisible(caseId, stepIndex, page, result, hooks)) {
+          if (await this.finishStablePage(caseId, stepIndex, page, result, hooks)) {
             status = "pass";
             error = undefined;
             break;
           }
           status = "blocked";
-          error = "page did not change after 3 actions";
+          error = goalAsksForFacts(goal) ? "stopped before the page facts were recorded" : "page did not change after 3 actions";
           break;
         }
       } catch (err) {
@@ -330,6 +403,21 @@ export class Agent {
     result.error = error;
     result.durationMs = Date.now() - started;
     return { result, history };
+  }
+
+  private hasRecordedFacts(result: CaseResult): boolean {
+    return result.steps.some((step) => step.op === "read" && step.status === "pass");
+  }
+
+  private async finishStablePage(
+    caseId: string,
+    stepIndex: number,
+    page: PageState,
+    result: CaseResult,
+    hooks: { onStep?: (result: CaseResult) => void },
+  ): Promise<boolean> {
+    if (goalAsksForFacts(this.taskGoal)) return this.hasRecordedFacts(result);
+    return this.passIfDoneVisible(caseId, stepIndex, page, result, hooks);
   }
 
   private async passIfDoneVisible(

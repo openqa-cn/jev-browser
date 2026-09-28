@@ -15,6 +15,15 @@ export function compileCase(
   for (const item of result.steps) {
     if (item.status === "skip" || item.status === "blocked") continue;
     if (item.status === "fail" && !item.pageChanged) continue;
+    if (item.op === "read" && item.value) {
+      for (const line of item.value.split("\n")) {
+        const price = line.match(/[¥￥]\s*\d[\d,]*(?:\.\d+)?/) ?? line.match(/\d[\d,]{3,}(?:\.\d+)?/);
+        if (!price) continue;
+        const token = price[0].replace(/[¥￥\s]/g, "");
+        if (token.replace(/[,.]/g, "").length >= 3) steps.push({ op: "assert", visibleText: token });
+      }
+      continue;
+    }
     if (["wait", "decide", "stale", "done", "blocked"].includes(item.op)) {
       if (item.op === "done" && item.title && !steps.some((step) => step.titleIncludes === item.title)) {
         steps.push({ op: "assert", titleIncludes: item.title });

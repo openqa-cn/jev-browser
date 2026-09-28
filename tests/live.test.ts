@@ -60,6 +60,26 @@ describe("live browser flows", () => {
     }
   });
 
+  it("keeps a later price in the page text after the opening text is full", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "codexqa-jev-browser-price-"));
+    const file = path.join(dir, "prices.html");
+    writeFileSync(
+      file,
+      `<!DOCTYPE html><title>prices</title><style>.flood{height:24px;overflow:hidden;white-space:nowrap}</style><body><div class="flood">${"栏目".repeat(2500)}</div><div class="card"><p>自营 iPhone 18 Pro Max 256GB 黑色</p><p>¥10999</p></div></body>`,
+    );
+    const session = new BrowserSession({ ...defaultConfig(), headless: true });
+    try {
+      const page = await session.start(file);
+      expect(page?.text).toContain("自营 iPhone 18 Pro Max 256GB 黑色");
+      expect(page?.text).toContain("¥10999");
+      const card = page?.elements.find((item) => item.name.includes("10999"));
+      expect(card?.operations).toContain("READ");
+      expect(card?.name).toContain("iPhone 18 Pro Max");
+    } finally {
+      await session.close();
+    }
+  });
+
   it("fails the step when the action has no visible effect", async () => {
     const config = { ...defaultConfig(), headless: true, reportsDir: mkdtempSync(path.join(tmpdir(), "codexqa-jev-browser-fx-")) };
     const writer = new ReportWriter(config.reportsDir, "effect-1", false);

@@ -71,6 +71,7 @@ Open or summarize `reports/<run-id>/report.html` before concluding. It contains 
 
 - Model output may only choose an operation plus an observed index. Never execute model-written selectors, JS, or shell.
 - `DONE` is not success. Assertions or visible evidence decide the result.
+- `READ` records a control Jev already sees. The control name is the fact, such as a product and its price. Jev chooses that index. It does not click, type, or ask another model to write the price. A price that is not the name of a visible control is not recorded. When the goal asks to read, list, or report those facts, `READ` has to record them before `DONE`. Text drawn only as an image is not copied.
 - Secrets stay in environment variables (`${PASSWORD}`), never in case files.
 - Confirm before explore/auto on logout, delete, pay, or other destructive controls.
 - Prefer semantic targets: `{role, name, nth, within}`.

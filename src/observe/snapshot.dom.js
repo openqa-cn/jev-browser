@@ -306,6 +306,34 @@
     return found;
   };
 
+  const priceText = (el) => (el.textContent || "").replace(/\s+/g, " ").trim();
+  const hasPrice = (text) => /[¥￥]\s*\d/.test(text);
+  const collectPriceCards = (root) => {
+    const found = [];
+    const visit = (node) => {
+      if (!node || !node.querySelectorAll) return;
+      for (const el of node.querySelectorAll("a,li,article,section,div")) {
+        const text = priceText(el);
+        if (text.length < 8 || text.length > 220 || !hasPrice(text)) continue;
+        const title = text.replace(/[¥￥]\s*\d[\d,.]*/g, "").replace(/\s+/g, " ").trim();
+        if (title.length < 4) continue;
+        if (!isVisible(el) || inChrome(el)) continue;
+        found.push(el);
+      }
+      for (const host of node.querySelectorAll("*")) {
+        if (host.shadowRoot) visit(host.shadowRoot);
+      }
+    };
+    visit(root);
+    return found.filter((el) => !found.some((other) => other !== el && el.contains(other))).slice(0, 12);
+  };
+  const factName = (el) => {
+    const text = priceText(el);
+    const price = text.match(/[¥￥]\s*\d[\d,.]*/);
+    const title = text.replace(/[¥￥]\s*\d[\d,.]*/g, " ").replace(/\s+/g, " ").trim().slice(0, 70);
+    return [title, price?.[0]?.replace(/\s+/g, "")].filter(Boolean).join(" ");
+  };
+
   const collectChooserLeaves = (root) => {
     const leaves = [];
     const visit = (node) => {
@@ -396,6 +424,7 @@
 
   prune();
   const nodes = [];
+  for (const el of collectPriceCards(document)) nodes.push({ el, frame: null, chooser: false, fact: true, name: factName(el) });
   for (const el of collectRoot(document)) nodes.push({ el, frame: null, chooser: false });
   for (const el of collectFieldEndIcons(document)) nodes.push({ el, frame: null, chooser: false, press: true, name: "搜索" });
   for (const el of collectChooserLeaves(document)) nodes.push({ el, frame: null, chooser: true });
@@ -404,6 +433,7 @@
       const doc = iframe.contentDocument;
       if (doc) {
         const frame = iframe.getAttribute("name") || iframe.id || "iframe";
+        for (const el of collectPriceCards(doc)) nodes.push({ el, frame, chooser: false, fact: true, name: factName(el) });
         for (const el of collectRoot(doc)) nodes.push({ el, frame, chooser: false });
         for (const el of collectChooserLeaves(doc)) nodes.push({ el, frame, chooser: true });
         for (const el of collectFieldEndIcons(doc)) nodes.push({ el, frame, chooser: false, press: true, name: "搜索" });
@@ -430,10 +460,10 @@
     };
     return score(a) - score(b);
   });
-  for (const { el, frame, chooser, card, press, name: givenName, href: cardHref } of ranked) {
+  for (const { el, frame, chooser, card, press, fact, name: givenName, href: cardHref } of ranked) {
     if (el.closest("footer, [role='contentinfo']")) continue;
     if (!isVisible(el) || isDisabled(el)) continue;
-    const role = chooser ? "option" : card ? "link" : press ? "button" : roleOf(el);
+    const role = chooser ? "option" : fact ? "article" : card ? "link" : press ? "button" : roleOf(el);
     if (!role) continue;
     const accessible = chooser
       ? (() => {
@@ -448,8 +478,8 @@
         ? ""
         : captionOf(el);
     const name = caption && !accessible.includes(caption) ? `${caption} ${accessible}`.trim().slice(0, 80) : accessible;
-    const operations = chooser || card || press ? ["CLICK"] : operationsOf(el, role);
-    if (!name && !chooser && !operations.includes("TYPE") && !operations.includes("SELECT")) continue;
+    const operations = fact ? ["READ"] : chooser || card || press ? ["CLICK"] : operationsOf(el, role);
+    if (!name && !chooser && !operations.includes("TYPE") && !operations.includes("SELECT") && !operations.includes("READ")) continue;
     const id = nodeId(el);
     const rawValue = valueOf(el, role);
     const secret = !chooser && secretControl(el, name);
@@ -484,28 +514,49 @@
   }
 
   const parts = [];
+  const facts = [];
+  const seenFacts = new Set();
+  const looksLikePrice = (text) => /[¥￥]\s*\d|\d[\d,，]{2,}(?:\.\d+)?\s*元/.test(text);
   const collectText = (doc) => {
     const root = doc.body || doc.documentElement;
     if (!root) return;
     const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const recent = [];
     let node;
     while ((node = walker.nextNode())) {
       const parent = node.parentElement;
       if (!parent || parent.closest("script,style,noscript,footer")) continue;
       if (!isVisible(parent)) continue;
       const text = node.textContent.replace(/\s+/g, " ").trim();
-      if (text) parts.push(text);
-      if (parts.join(" ").length > 4000) return;
+      if (!text) continue;
+      recent.push(text);
+      if (recent.length > 4) recent.shift();
+      if (parts.join(" ").length <= 4000) parts.push(text);
+      if (!looksLikePrice(text)) continue;
+      for (const piece of recent) {
+        if (seenFacts.has(piece)) continue;
+        seenFacts.add(piece);
+        facts.push(piece);
+      }
+      if (facts.join(" ").length > 4000) return;
     }
   };
   collectText(document);
   for (const iframe of document.querySelectorAll("iframe")) {
-    if (parts.join(" ").length > 4000) break;
+    if (parts.join(" ").length > 4000 && facts.join(" ").length > 4000) break;
     try {
       if (iframe.contentDocument) collectText(iframe.contentDocument);
     } catch {
       /* cross-origin */
     }
+  }
+  const merged = [];
+  const seenText = new Set();
+  for (const piece of parts.concat(facts)) {
+    if (seenText.has(piece)) continue;
+    seenText.add(piece);
+    merged.push(piece);
+    if (merged.join(" ").length > 8000) break;
   }
 
   const pageKey = location.href + "|" + document.title;
@@ -520,7 +571,7 @@
   return {
     url: location.href,
     title: document.title,
-    text: parts.join(" ").slice(0, 4000),
+    text: merged.join(" ").slice(0, 8000),
     elements,
     scroll: { x: scrollX, y: scrollY, maxY: Math.max(document.documentElement.scrollHeight - innerHeight, 0) },
     pageKey,

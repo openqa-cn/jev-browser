@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { compileCase } from "../src/generate.js";
 import { Agent, finishAutoStatus } from "../src/agent.js";
 import * as act from "../src/act.js";
 import type { BrowserSession } from "../src/browser.js";
@@ -33,6 +34,7 @@ describe("auto result", () => {
       ),
     ).toEqual({ status: "fail", error: "action had no visible effect" });
     expect(finishAutoStatus("pass", [{ op: "done", status: "pass" }], 4)).toEqual({ status: "pass", error: undefined });
+    expect(finishAutoStatus("pass", [{ op: "read", status: "pass" }], 4)).toEqual({ status: "pass", error: undefined });
   });
 
   it("asks the text model for a field the goal did not name", async () => {
@@ -184,6 +186,73 @@ describe("auto result", () => {
     expect(result.status).toBe("blocked");
     expect(result.error).toBe("page did not change after 3 actions");
   });
+
+  it("records the price on the control Jev selects", async () => {
+    const fetchMock = vi.spyOn(modelHttp, "modelFetch");
+    const state = pricePage();
+    const writer = new ReportWriter(mkdtempSync(path.join(tmpdir(), "codexqa-jev-browser-read-")), "agent-read", false);
+    const agent = new Agent(fakeSession(state), writer, defaultConfig(), {
+      provider: new RecordingScript([
+        { operation: "DONE" },
+        { operation: "READ", target: { role: "article", name: "自营 iPhone 18 Pro Max 256GB 黑色 ¥10999" } },
+        { operation: "DONE" },
+      ]),
+    });
+    const { result } = await agent.run(state.url, "在京东搜索 iPhone 18 Pro Max，读出页面上可见的商品价格");
+    const read = result.steps.find((step) => step.op === "read");
+    expect(read?.status).toBe("pass");
+    expect(read?.value).toContain("10999");
+    expect(read?.value).not.toContain("99999");
+    expect(result.steps.some((step) => step.op === "done" && step.status === "skip")).toBe(true);
+    expect(result.steps.some((step) => step.op === "done" && step.status === "pass")).toBe(true);
+    expect(result.status).toBe("pass");
+    expect(fetchMock).not.toHaveBeenCalled();
+    const compiled = compileCase(result, state.url);
+    expect(compiled.steps.some((step) => step.visibleText === "10999")).toBe(true);
+    expect(compiled.steps.some((step) => step.visibleText === "99999")).toBe(false);
+  });
+
+  it("does not record a price that is not a visible control", async () => {
+    const state = pricePage();
+    const writer = new ReportWriter(mkdtempSync(path.join(tmpdir(), "codexqa-jev-browser-read-miss-")), "agent-read-miss", false);
+    const agent = new Agent(fakeSession(state), writer, defaultConfig(), {
+      provider: new RecordingScript([{ operation: "READ", read_target: "99" }, { operation: "DONE" }]),
+    });
+    const { result } = await agent.run(state.url, "读出页面上可见的商品价格");
+    expect(result.steps.some((step) => step.op === "read" && step.status === "pass")).toBe(false);
+    expect(result.steps.some((step) => step.value?.includes("99999"))).toBe(false);
+    expect(result.status).not.toBe("pass");
+  });
+
+  it("asks again for a price control when the results page stays the same", async () => {
+    const fetchMock = vi.spyOn(modelHttp, "modelFetch");
+    vi.spyOn(act, "execute").mockResolvedValue(undefined);
+    const state = pricePage();
+    state.elements.push({
+      index: "2",
+      node: 2,
+      role: "button",
+      name: "搜索",
+      value: "",
+      operations: ["CLICK"],
+      within: "",
+      nearby: "",
+      options: [],
+    });
+    const writer = new ReportWriter(mkdtempSync(path.join(tmpdir(), "codexqa-jev-browser-read-stable-")), "agent-read-stable", false);
+    const provider = new RecordingScript([
+      { operation: "CLICK", target: { role: "button", name: "搜索" } },
+      { operation: "READ", target: { role: "article", name: "自营 iPhone 18 Pro Max 256GB 黑色 ¥10999" } },
+      { operation: "DONE" },
+    ]);
+    const agent = new Agent(fakeSession(state), writer, defaultConfig(), { provider });
+    const { result } = await agent.run(state.url, "读出页面上可见的商品价格");
+    expect(provider.spaces.length).toBeGreaterThan(1);
+    expect(provider.spaces[1]?.readTargets["4"]).toBeDefined();
+    expect(result.steps.some((step) => step.op === "read" && step.status === "pass" && step.value?.includes("10999"))).toBe(true);
+    expect(result.status).toBe("pass");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
 
 class RecordingScript extends ScriptedProvider {
@@ -193,6 +262,43 @@ class RecordingScript extends ScriptedProvider {
     this.spaces.push(space);
     return super.choose(page, goal, history, space);
   }
+}
+
+function pricePage(): PageState {
+  return {
+    url: "https://search.jd.com/Search?keyword=iPhone%2018%20Pro%20Max",
+    title: "iPhone 18 - 商品搜索 - 京东",
+    text: "自营 iPhone 18 Pro Max 256GB 黑色 ¥10999",
+    elements: [
+      {
+        index: "1",
+        node: 1,
+        role: "textbox",
+        name: "搜索",
+        value: "iPhone 18 Pro Max",
+        operations: ["TYPE", "CLICK"],
+        within: "",
+        nearby: "",
+        options: [],
+      },
+      {
+        index: "4",
+        node: 4,
+        role: "article",
+        name: "自营 iPhone 18 Pro Max 256GB 黑色 ¥10999",
+        value: "",
+        operations: ["READ"],
+        within: "",
+        nearby: "",
+        options: [],
+      },
+    ],
+    scroll: {},
+    pageKey: "k",
+    marker: "m",
+    guards: {},
+    fingerprint: "f",
+  };
 }
 
 function flightPage(): PageState {

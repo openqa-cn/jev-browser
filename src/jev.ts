@@ -89,6 +89,7 @@ export function buildJevRequest(
   };
   addTargetQuestion(questions, "click_target", "CLICK", pickPool(packed.click_targets, space.clickTargets), goal);
   addTargetQuestion(questions, "type_target", "TYPE", pickPool(packed.type_targets, space.typeTargets), goal);
+  addTargetQuestion(questions, "read_target", "READ", pickPool(packed.read_targets, space.readTargets), goal);
   addTypeTextQuestions(questions, packed.type_targets, space, goal);
   if (Object.keys(space.selectTargets).length) {
     questions.select_target = {
@@ -220,6 +221,7 @@ export function parseJevAnswers(answers: Record<string, { choice?: string }>): D
     if (typed) raw.text = typed;
   }
   if (operation === "SELECT") raw.select_target = answers.select_target?.choice;
+  if (operation === "READ") raw.read_target = answers.read_target?.choice;
   return parseDecision(raw);
 }
 
@@ -297,7 +299,8 @@ function operationHint(name: string): string {
   if (name === "SCROLL_DOWN") return "Scroll down to reveal more controls.";
   if (name === "SCROLL_UP") return "Scroll up to reveal more controls.";
   if (name === "WAIT") return "Wait only if the needed control is still loading.";
-  if (name === "DONE") return "Every requirement is already visible.";
+  if (name === "READ") return "Choose a visible control whose name already shows the fact, such as a product and its price.";
+  if (name === "DONE") return "Every requirement is already visible. Do not use DONE to return a price or a list; use READ first.";
   if (name === "BLOCKED") return "No supported operation can make progress.";
   return name;
 }
@@ -394,7 +397,7 @@ Use the URL, title, visible text, and controls.
 The same place, date, or result may appear in another form, including inside the URL.
 A results page for those facts is enough, even without the condition's exact words.
 If the URL or title already contains the places and dates in the condition, choose met.
-Do not demand a separate price list when the page is already the results page for that query.
+When the condition asks for a price, name, or other copied fact, choose met only if that fact is visible in the page text. A results URL alone does not show the price.
 Choose unmet only when the page is still an earlier step, or the route, date, or result contradicts the condition.`;
 
 export async function jevConfirmDone(

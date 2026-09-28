@@ -64,6 +64,7 @@ describe("jev provider", () => {
     expect(body.model).toBe("jev-latest");
     expect((body.state as { page: { text?: string } }).page.text).toBeUndefined();
     expect(Object.keys(questions.operation.criteria)).toContain("CLICK");
+    expect(Object.keys(questions.operation.criteria)).not.toContain("READ");
     expect(Object.keys(questions.click_target.criteria)).toEqual(["13", "14", "15"]);
     expect(Object.keys(questions.type_target.criteria)).toEqual(["13"]);
     expect(Object.keys(questions.text_13.criteria)).toContain("携程");
@@ -200,6 +201,26 @@ describe("jev provider", () => {
     expect(checked.met).toBe(true);
     expect(checked.model).toBe("jev-1.13.0");
     expect(checked.reply).toContain("done: met");
+  });
+
+  it("offers a price control to Jev as a read target", () => {
+    const space = buildSpace(
+      page(
+        el({ index: "1", node: 1, role: "button", name: "搜索", operations: ["CLICK"] }),
+        el({
+          index: "4",
+          node: 4,
+          role: "article",
+          name: "自营 iPhone 18 Pro Max 256GB 黑色 ¥10999",
+          operations: ["READ"],
+        }),
+      ),
+    );
+    const body = buildJevRequest(defaultConfig(), { url: "https://search.jd.com/", title: "搜索" }, "读出价格", [], space);
+    const questions = body.questions as Record<string, { criteria: Record<string, { element?: string }> }>;
+    expect(Object.keys(questions.operation.criteria)).toContain("READ");
+    expect(questions.read_target.criteria["4"]?.element).toContain("10999");
+    expect(JSON.stringify(questions.read_target)).not.toContain("99999");
   });
 
   it("maps the typed characters chosen for that field", () => {

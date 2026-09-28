@@ -781,6 +781,11 @@ function stepTask(step: StepResult, lang: ReportLang): string {
     return valued ? `Select ${valued}` : "Select";
   }
   if (step.op === "wait") return lang === "zh" ? "等待页面" : "Wait for the page";
+  if (step.op === "read") {
+    const facts = value.replace(/\s*\n\s*/g, "；");
+    if (lang === "zh") return facts ? `读取页面信息：${facts}` : "读取页面信息";
+    return facts ? `Read page facts: ${facts}` : "Read page facts";
+  }
   if (step.op === "open") {
     const target = step.url || step.value || "";
     return lang === "zh" ? `打开 ${target}` : `Open ${target}`;

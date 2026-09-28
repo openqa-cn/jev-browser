@@ -11,6 +11,7 @@ export interface ActionSpace {
   clickTargets: Record<string, ObservedElement>;
   typeTargets: Record<string, ObservedElement>;
   selectTargets: Record<string, { element: ObservedElement; option: { index: string; value: string; label: string } }>;
+  readTargets: Record<string, ObservedElement>;
 }
 
 export const NEXT_ACTION = `Advance the user's entire goal from the CURRENT page with one operation.
@@ -21,6 +22,7 @@ A field that already has a value is not done unless that value is the one THIS f
 WAIT when the needed control is missing or results are still loading. If a navigation just happened and the goal's controls are not in the list yet, WAIT instead of typing into an unrelated field.
 After TYPE into a combobox/textbox that opened a list, CLICK the matching option. Do not type another chooser until that click.
 While a list or calendar is open, click an option. Do not click the field that opened it again.
+READ chooses one observed control whose name already shows a fact the goal asked for, such as a product and its price. That control name is the record. Do not invent a price. After those controls are recorded, choose DONE.
 DONE requires visible evidence that ALL requirements are satisfied.
 BLOCKED means no supported operation can make progress.
 Choose only an offered operation. Never invent selectors, coordinates, JavaScript, or shell commands.`;
@@ -34,6 +36,7 @@ export function packForModel(space: ActionSpace): {
   click_targets: string[];
   type_targets: string[];
   select_targets: string[];
+  read_targets: string[];
 } {
   const visible = space.elements.filter(offeredToModel);
   const chosen = visible.length ? visible : space.elements.slice(0, 20);
@@ -41,10 +44,12 @@ export function packForModel(space: ActionSpace): {
   const clickTargets = Object.keys(space.clickTargets).filter((index) => allowed.has(index));
   const typeTargets = Object.keys(space.typeTargets).filter((index) => allowed.has(index));
   const selectTargets = Object.keys(space.selectTargets).filter((index) => allowed.has(index));
+  const readTargets = Object.keys(space.readTargets).filter((index) => allowed.has(index));
   const operations = space.operations.filter((name) => {
     if (name === "CLICK") return clickTargets.length > 0;
     if (name === "TYPE") return typeTargets.length > 0;
     if (name === "SELECT") return selectTargets.length > 0;
+    if (name === "READ") return readTargets.length > 0;
     return true;
   });
   return {
@@ -53,6 +58,7 @@ export function packForModel(space: ActionSpace): {
     click_targets: clickTargets,
     type_targets: typeTargets,
     select_targets: selectTargets,
+    read_targets: readTargets,
   };
 }
 
@@ -60,20 +66,23 @@ export function buildSpace(page: PageState): ActionSpace {
   const clickTargets: ActionSpace["clickTargets"] = {};
   const typeTargets: ActionSpace["typeTargets"] = {};
   const selectTargets: ActionSpace["selectTargets"] = {};
+  const readTargets: ActionSpace["readTargets"] = {};
   for (const item of page.elements) {
     if (item.operations.includes("CLICK")) clickTargets[item.index] = item;
     if (item.operations.includes("TYPE")) typeTargets[item.index] = item;
+    if (item.operations.includes("READ")) readTargets[item.index] = item;
     if (item.operations.includes("SELECT")) {
       for (const option of item.options) selectTargets[option.index] = { element: item, option };
     }
   }
-  const operations = ["CLICK", "TYPE", "SELECT", "SCROLL_UP", "SCROLL_DOWN", "WAIT", "DONE", "BLOCKED"].filter((name) => {
+  const operations = ["CLICK", "TYPE", "SELECT", "SCROLL_UP", "SCROLL_DOWN", "WAIT", "READ", "DONE", "BLOCKED"].filter((name) => {
     if (name === "CLICK") return Object.keys(clickTargets).length > 0;
     if (name === "TYPE") return Object.keys(typeTargets).length > 0;
     if (name === "SELECT") return Object.keys(selectTargets).length > 0;
+    if (name === "READ") return Object.keys(readTargets).length > 0;
     return true;
   });
-  return { elements: page.elements, operations, clickTargets, typeTargets, selectTargets };
+  return { elements: page.elements, operations, clickTargets, typeTargets, selectTargets, readTargets };
 }
 
 export function validateDecision(decision: Decision, space: ActionSpace): Decision {
@@ -90,6 +99,9 @@ export function validateDecision(decision: Decision, space: ActionSpace): Decisi
   }
   if (decision.operation === "SELECT" && !(decision.selectTarget && space.selectTargets[decision.selectTarget])) {
     throw new DecisionError("SELECT target is missing or not a native option");
+  }
+  if (decision.operation === "READ" && !(decision.readTarget && space.readTargets[decision.readTarget])) {
+    throw new DecisionError("READ target is missing or not a visible fact");
   }
   const blob = JSON.stringify(decision);
   if (["document.", "javascript:", "xpath", "querySelector"].some((token) => blob.includes(token))) {
@@ -123,9 +135,10 @@ export class ScriptedProvider implements DecisionProvider {
     if (this.cursor >= this.script.length) return { operation: "BLOCKED", reason: "script exhausted" };
     const item = this.script[this.cursor++];
     const decision = parseDecision(item);
-    if (decision.target && ["CLICK", "TYPE", "SELECT"].includes(decision.operation)) {
+    if (decision.target && ["CLICK", "TYPE", "SELECT", "READ"].includes(decision.operation)) {
       const { element } = resolveTarget(page, decision.target);
       if (decision.operation === "CLICK") decision.clickTarget = element.index;
+      if (decision.operation === "READ") decision.readTarget = element.index;
       if (decision.operation === "TYPE") decision.typeTarget = element.index;
       if (decision.operation === "SELECT") {
         const wanted = String(item.value ?? decision.text ?? "");
@@ -261,7 +274,7 @@ Treat the URL, title, visible text, and controls as the page.
 The same place, date, or result may show up in another form, including inside the URL.
 A results page for those facts is enough, even without the condition's exact words.
 If the URL or title already contains the places and dates in the condition, met is true.
-Do not demand a separate price list when the page is already the results page for that query.
+When the condition asks for a price, name, or other copied fact, met is true only if that fact is visible in the page text. A results URL alone does not show the price.
 met is false only when the page is still an earlier step, or the route, date, or result contradicts the condition.`;
 
 export async function confirmDone(
@@ -363,6 +376,7 @@ function offeredToModel(item: ObservedElement): boolean {
 export function applyHistoryGuards(space: ActionSpace, history: Record<string, unknown>[]): ActionSpace {
   const typeTargets = { ...space.typeTargets };
   const clickTargets = { ...space.clickTargets };
+  const readTargets = { ...space.readTargets };
   const recent = history.slice(-8);
   const last = recent.at(-1);
   const blockedType = new Set<string>();
@@ -411,13 +425,26 @@ export function applyHistoryGuards(space: ActionSpace, history: Record<string, u
   }
   for (const index of staleClicks) delete clickTargets[index];
 
+  const readDone = new Set<string>();
+  for (const item of history) {
+    if (item.page_changed === true) {
+      readDone.clear();
+      continue;
+    }
+    if (item.op !== "read") continue;
+    const index = (item.matched as { index?: string } | undefined)?.index;
+    if (index) readDone.add(index);
+  }
+  for (const index of readDone) delete readTargets[index];
+
   for (const index of blockedType) delete typeTargets[index];
   const operations = space.operations.filter((name) => {
     if (name === "TYPE") return Object.keys(typeTargets).length > 0;
     if (name === "CLICK") return Object.keys(clickTargets).length > 0;
+    if (name === "READ") return Object.keys(readTargets).length > 0;
     return true;
   });
-  return { ...space, typeTargets, clickTargets, operations };
+  return { ...space, typeTargets, clickTargets, readTargets, operations };
 }
 
 export function bindNamedTargets(decision: Decision, space: ActionSpace): Decision {
@@ -432,6 +459,7 @@ export function bindNamedTargets(decision: Decision, space: ActionSpace): Decisi
   };
   decision.clickTarget = bind(decision.clickTarget, space.clickTargets);
   decision.typeTarget = bind(decision.typeTarget, space.typeTargets);
+  decision.readTarget = bind(decision.readTarget, space.readTargets);
   return decision;
 }
 
@@ -440,6 +468,7 @@ export function parseDecision(raw: Record<string, unknown>): Decision {
   let clickTarget = (raw.click_target ?? raw.clickTarget) as string | null | undefined;
   let typeTarget = (raw.type_target ?? raw.typeTarget) as string | null | undefined;
   let selectTarget = (raw.select_target ?? raw.selectTarget) as string | null | undefined;
+  let readTarget = (raw.read_target ?? raw.readTarget) as string | null | undefined;
   const generic = raw.target;
   if (typeof generic === "string" || typeof generic === "number") {
     const index = String(generic);
@@ -447,12 +476,14 @@ export function parseDecision(raw: Record<string, unknown>): Decision {
     if (op === "CLICK" && !clickTarget) clickTarget = index;
     if ((op === "TYPE" || op === "TYPE_TEXT") && !typeTarget) typeTarget = index;
     if (op === "SELECT" && !selectTarget) selectTarget = index;
+    if (op === "READ" && !readTarget) readTarget = index;
   }
   return {
     operation,
     clickTarget,
     typeTarget,
     selectTarget,
+    readTarget,
     confidence: (raw.confidence as number | undefined) ?? null,
     reason: (raw.reason as string | undefined) ?? null,
     text: (raw.text as string | undefined) ?? null,
@@ -513,6 +544,15 @@ export function searchQueryFromGoal(goal: string, field: { role?: string; name?:
   query = query.replace(/^一下\s*/, "").replace(/^[「“"'《]+|[」”"'》]+$/g, "").trim();
   if (!query || query.length > 80 || query === "搜索") return undefined;
   return query;
+}
+
+export function goalAsksForFacts(goal: string): boolean {
+  const source = goal.split(/\n\s*Planned steps:/)[0].split(/\n\s*Business notes/)[0];
+  return /读出|读取|获取信息|列出|价格|多少钱|告诉我/.test(source);
+}
+
+export function hasPendingReads(page: PageState, history: Record<string, unknown>[]): boolean {
+  return Object.keys(applyHistoryGuards(buildSpace(page), history).readTargets).length > 0;
 }
 
 const TEXT_PROMPT = `Return one JSON object with key text.
@@ -598,5 +638,6 @@ export function selectedIndex(decision: Decision): string | undefined {
   if (decision.operation === "CLICK") return decision.clickTarget ?? undefined;
   if (decision.operation === "TYPE") return decision.typeTarget ?? undefined;
   if (decision.operation === "SELECT") return decision.selectTarget ?? undefined;
+  if (decision.operation === "READ") return decision.readTarget ?? undefined;
   return undefined;
 }

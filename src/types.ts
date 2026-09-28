@@ -194,6 +194,7 @@ export interface Decision {
   clickTarget?: string | null;
   typeTarget?: string | null;
   selectTarget?: string | null;
+  readTarget?: string | null;
   confidence?: number | null;
   reason?: string | null;
   text?: string | null;
